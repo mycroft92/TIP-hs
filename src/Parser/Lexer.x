@@ -1,5 +1,5 @@
 {
-module Lexer (
+module Parser.Lexer (
     Alex,
     AlexPosn (..),
     alexGetInput,
@@ -16,7 +16,7 @@ module Lexer (
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Conditional (when)
-import TokenTypes (Token(..))
+import Parser.TokenTypes (Token(..))
 /*import Errors*/
 
 }

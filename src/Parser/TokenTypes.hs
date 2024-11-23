@@ -1,4 +1,4 @@
-module TokenTypes (Token(..)) where
+module Parser.TokenTypes (Token(..)) where
 import GHC.IO.Encoding (CodingProgress(InputUnderflow))
 
 data Token

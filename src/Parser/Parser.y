@@ -1,14 +1,14 @@
 {
 {-# LANGUAGE DeriveFoldable #-}
-module Parser
+module Parser.Parser
    where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (fromJust)
 import Data.Monoid (First (..))
 
-import qualified Lexer as L
-import qualified TokenTypes as T
+import qualified Parser.Lexer as L
+import qualified Parser.TokenTypes as T
 
 }
 
