@@ -25,10 +25,12 @@ source-repository head
 
 library
   exposed-modules:
-      Lexer
+      AST.AST
+      AST.FreshMonad
       Lib
-      Parser
-      TokenTypes
+      Parser.Lexer
+      Parser.Parser
+      Parser.TokenTypes
   other-modules:
       Paths_TIP
   autogen-modules:
