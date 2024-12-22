@@ -147,9 +147,10 @@ exp
     | '(' exp ')'  {$2}
 
 lexp 
-    : identifier {}
-    | '*' identifier {}
-    | '&' identifier {}
+    : identifier {unTok $1 (\(T.Identifier n) rng -> A.Id n rng)}
+    | '*' lexp   {A.Unop A.ADeref $2 (loc $1 <=> (range $2))}
+    | '(' lexp ')' { $2 }
+    -- | '&' identifier {}
     -- | '{' record_list '}' {}
 
 stm 
