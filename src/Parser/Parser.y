@@ -6,6 +6,8 @@ module Parser.Parser
 import Data.ByteString.Lazy.Char8 (ByteString)
 import Data.Maybe (fromJust)
 import Data.Monoid (First (..))
+import qualified AST.AST as A
+import AST.AST ((<->), range)
 
 import qualified Parser.Lexer as L
 import qualified Parser.TokenTypes as T
@@ -92,23 +94,23 @@ optional(p)
   | p { Just $1 }
 
 binop 
-    : '*'  %shift {T.Times}
-    | '/'  %shift {T.Divide}
-    | '-'  %shift {T.Minus}
-    | '+'  %shift {T.Plus}
-    | '='  %shift {T.Eq}
-    | '<>' %shift {T.Neq}
-    | '<'  %shift {T.Lt}
-    | '>'  %shift {T.Gt}
-    | '<=' %shift {T.Le}
-    | '>=' %shift {T.Ge}
-    | '&&' %shift {T.And}
-    | '||' %shift {T.Or}
+    : '*'  %shift {$1}
+    | '/'  %shift {$1}
+    | '-'  %shift {$1}
+    | '+'  %shift {$1}
+    | '='  %shift {$1}
+    | '<>' %shift {$1}
+    | '<'  %shift {$1}
+    | '>'  %shift {$1}
+    | '<=' %shift {$1}
+    | '>=' %shift {$1}
+    | '&&' %shift {$1}
+    | '||' %shift {$1}
 
 unop 
-    : '*' {T.Times}
-    | '&' {T.Ampersand}
-    | '-' {T.Minus}
+    : '*' {$1}
+    | '&' {$1}
+    | '-' {$1} 
 
 exp_list
     :      {[]}
@@ -116,33 +118,33 @@ exp_list
     | exp_list ',' exp {$3:$1}
 
 record_list
-    : identifier ':' exp {}
-    | record_list ',' identifier ':' exp {}
+    : identifier ':' exp  { unTok $1 (\(T.Identifier n) rng -> [A.RecField n $3 ((loc $1) <=> (A.range $3))])}
+    | record_list ',' identifier ':' exp {unTok $3 (\(T.Identifier n) rng -> A.RecField n $5 ((loc $3) <=> (A.range $5))) : $1}
 exp
-    : identifier {}
-    | integer    {}
-    | input      {}
-    | exp '+'  exp %shift{}
-    | exp '-'  exp %shift{}
-    | exp '/'  exp %shift{}
-    | exp '*'  exp %shift{}
-    | exp '='  exp       {}
-    | exp '<>' exp       {}
-    | exp '<'  exp       {}
-    | exp '>'  exp       {}
-    | exp '<=' exp       {}
-    | exp '>=' exp       {}
-    | exp '&&' exp %shift{}
-    | exp '||' exp %shift{}
-    | exp '(' exp_list ')' {}
-    | alloc exp  {}
-    | '&' identifier {}
-    | '{' record_list '}' {}
-    | exp '.' identifier %shift {}
-    | '*' exp  %prec NEG  {}
-    | '-' exp  %prec NEG  {}
-    |  null      {}
-    | '(' exp ')'  {}
+    : identifier {unTok $1 (\(T.Identifier n) rng -> A.Id n rng)}
+    | integer    {unTok $1 (\(T.Integer n) rng -> A.Number n rng)}
+    | input      {unTok $1 (\_ rng -> A.Input rng)}
+    | exp '+'  exp %shift {A.Binop $1 A.APlus $3 ($1 <-> $3)}
+    | exp '-'  exp %shift {A.Binop $1 A.AMinus $3 ($1 <-> $3)}
+    | exp '/'  exp %shift {A.Binop $1 A.ADivide $3 ($1 <-> $3)}
+    | exp '*'  exp %shift {A.Binop $1 A.ATimes $3 ($1 <-> $3)}
+    | exp '='  exp        {A.Binop $1 A.AEqq $3 ($1 <-> $3)}
+    | exp '<>' exp        {A.Binop $1 A.ANEq $3 ($1 <-> $3)}
+    | exp '<'  exp        {A.Binop $1 A.ALt $3 ($1 <-> $3)}
+    | exp '>'  exp        {A.Binop $1 A.AGt $3 ($1 <-> $3)}
+    | exp '<=' exp        {A.Binop $1 A.ALe $3 ($1 <-> $3)}
+    | exp '>=' exp        {A.Binop $1 A.AGe $3 ($1 <-> $3)}
+    | exp '&&' exp %shift {A.Binop $1 A.ALAnd $3 ($1 <-> $3)}
+    | exp '||' exp %shift {A.Binop $1 A.ALOr $3 ($1 <-> $3)}
+    | exp '(' exp_list ')' {A.CallExpr $1 $3 ((range $1) <=> (loc $4))}
+    | alloc exp  {A.Alloc $2 ((loc $1) <=> (range $2))}
+    | '&' identifier {unTok $2 (\(T.Identifier n) rng -> A.VarRef n (loc $1 <=> rng))}
+    | '{' record_list '}' {A.Record (reverse $2) (loc $1 <=> (loc $3))}
+    | exp '.' identifier %shift {unTok $3 (\(T.Identifier n) rng -> A.FieldAccess $1 n (range $1 <=> rng)) }
+    | '*' exp  %prec NEG  {A.Unop A.ADeref $2 (loc $1 <=> (range $2))}
+    | '-' exp  %prec NEG  {A.Unop A.AMinus $2 (loc $1 <=> (range $2))}
+    |  null               {A.Null (loc $1)}
+    | '(' exp ')'  {$2}
 
 lexp 
     : identifier {}
@@ -178,8 +180,11 @@ program
 
 {
 
--- unTok :: L.RangedToken -> (A.Range -> T.Token -> a) -> a
--- unTok (L.RangedToken tok rng) ctor = ctor (range rng) tok
+loc :: L.RangedToken -> L.Range
+loc (L.RangedToken tok rng) = rng
+
+unTok :: L.RangedToken -> (T.Token -> L.Range -> a) -> a
+unTok (L.RangedToken tok rng) ctor = ctor tok rng 
 
 
 -- | Performs the union of two ranges by creating a new range starting at the
