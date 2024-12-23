@@ -147,32 +147,35 @@ exp
     | '(' exp ')'  {$2}
 
 lexp 
-    : identifier {unTok $1 (\(T.Identifier n) rng -> A.Id n rng)}
-    | '*' lexp   {A.Unop A.ADeref $2 (loc $1 <=> (range $2))}
+    : identifier {unTok $1 (\(T.Identifier n) rng -> A.Ident n rng)}
+    | '*' lexp   {A.AtRef $2 (loc $1 <=> (range $2))}
     | '(' lexp ')' { $2 }
     -- | '&' identifier {}
     -- | '{' record_list '}' {}
 
 stm 
-    : lexp ':=' exp ';' {}
-    | lexp '.' identifier ':=' exp ';' {}
-    | output exp ';'          {}
-    | stm stm           %shift{}
-    | if '(' exp ')' '{' stm '}' else '{' stm '}' {}
-    | if '(' exp ')' '{' stm '}'    {}
-    | while '(' exp ')' '{' stm '}' {}
+    : lexp ':=' exp ';' {A.SimpleAssign $1 $3 (range $1 <=> (loc $4))}
+    | lexp '.' identifier ':=' exp ';' {unTok $3 (\(T.Identifier n) _ -> A.FieldAssign $1 n $5 (range $1 <=> (loc $6)))}
+    | output exp ';'          {A.Output $2 (loc $1 <=> (loc $3))}
+    | stm stm           %shift{A.Seq $1 $2 ($1 <-> $2)}
+    | if '(' exp ')' '{' stm '}' else '{' stm '}' {A.IfStmt $3 $6 (Just $10) (loc $1 <=> (loc $11))}
+    | if '(' exp ')' '{' stm '}'    %shift {A.IfStmt $3 $6 Nothing (loc $1 <=> (loc $7))}
+    | while '(' exp ')' '{' stm '}' {A.WhileStmt $3 $6 (loc $1 <=> (loc $7))}
 
 id_list
     :     {[]}
-    | identifier {[$1]}
-    | id_list ',' identifier {$3:$1}
+    | identifier {unTok $1 (\(T.Identifier n) rng -> [n])}
+    | id_list ',' identifier {unTok $3 (\(T.Identifier n) _ -> n:$1)}
 
 var_list
     : var id_list ';' {reverse $2}
 
 functionDec
-    : identifier '(' id_list ')' '{' var_list stm return exp ';' '}' {}
-    | identifier '(' id_list ')' '{' stm return exp ';' '}'          {}
+    : identifier '(' id_list ')' '{' var_list stm return exp ';' '}' {
+        unTok $1 (\(T.Identifier n) rng -> A.Fun n (reverse $3) $6 $7 $9 (rng <=> (loc $11))) }
+    | identifier '(' id_list ')' '{' stm return exp ';' '}'          {
+        unTok $1  (\(T.Identifier n) rng -> A.Fun n (reverse $3) [] $6 $8 (rng <=> (loc $10))) 
+    }
 
 program
     : {[]}
