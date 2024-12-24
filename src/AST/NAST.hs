@@ -14,3 +14,5 @@ data NExpr = NId !String
     | NRec ![NRecField] 
     | NFieldAccess !String !String
     | NVarRef !String deriving (Show, Eq)
+
+data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String | NIndirectWrite !String !String deriving (Show, Eq) 
