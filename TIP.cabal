@@ -27,6 +27,7 @@ library
   exposed-modules:
       AST.AST
       AST.FreshMonad
+      AST.NAST
       Lib
       Parser.Lexer
       Parser.Parser
