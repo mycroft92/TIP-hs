@@ -34,12 +34,12 @@ tokens :-
 
 <0> $white+ ;
 
-<0>       "(*" { nestComment `andBegin` comment }
-<0>       "*)" { \_ _ -> alexError "Error: unexpected closing comment" }
+<0>       "/*" { nestComment `andBegin` comment }
+<0>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
 <0>       \"   {andBegin initString string}
 <0> "//"[^\n]* {skip}
-<comment> "(*" { nestComment }
-<comment> "*)" { unnestComment }
+<comment> "/*" { nestComment }
+<comment> "*/" { unnestComment }
 <comment> .    ;
 <comment> \n   ;
 -- TODO
