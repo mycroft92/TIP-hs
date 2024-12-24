@@ -5,7 +5,7 @@ import Parser.Lexer(Range, Range(Range))
 --data Loc  = Loc {start:: (Int, Int), end:: (Int,Int)} deriving (Show, Eq)
 data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Show, Eq)
 
-data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd |ADeref deriving (Show, Eq)
+data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd |ARef deriving (Show, Eq)
 
 data RecField = RecField !String !AExpr !Range deriving (Show, Eq) 
 
@@ -24,12 +24,12 @@ data AExpr =
       -- | DerefExp !AExpr !Range
       | CallExpr !AExpr ![AExpr] !Range deriving (Eq, Show)
 
-data LExp    = Ident !String !Range | AtRef !LExp !Range deriving (Show, Eq) 
+data LExp    = Ident !String !Range | ExprWrite !AExpr !Range| DirectWrite !String !String !Range |IndirectWrite !AExpr !String !Range deriving (Show, Eq) 
 data AAssign = AAssign !LExp !AExpr !Range deriving (Eq, Show)
 
 data AStmt   = 
     SimpleAssign !LExp !AExpr !Range
-    | FieldAssign !LExp !String !AExpr !Range
+    | FieldAssign !LExp  !AExpr !Range
     | Output !AExpr !Range
     | Seq !AStmt !AStmt !Range
     | IfStmt !AExpr !AStmt !(Maybe AStmt) !Range
@@ -65,11 +65,13 @@ instance Ranger AExpr where
     --range (DerefExp _ r)      = r
 instance Ranger LExp where
     range (Ident _ r) = r
-    range (AtRef _ r) = r
+    range (DirectWrite _ _ r) = r
+    range (IndirectWrite _ _ r) = r
+    range (ExprWrite _ r)       = r
 
 instance Ranger AStmt where
-    range (SimpleAssign _ _ r)   = r
-    range (FieldAssign _ _ _ r)  = r
+    range (SimpleAssign _  _ r)   = r
+    range (FieldAssign  _ _ r)  = r
     range (Output _ r)           = r
     range (Seq _ _ r)            = r
     range (IfStmt _ _ _ r)       = r

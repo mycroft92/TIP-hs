@@ -141,21 +141,22 @@ exp
     | '&' identifier {unTok $2 (\(T.Identifier n) rng -> A.VarRef n (loc $1 <=> rng))}
     | '{' record_list '}' {A.Record (reverse $2) (loc $1 <=> (loc $3))}
     | exp '.' identifier %shift {unTok $3 (\(T.Identifier n) rng -> A.FieldAccess $1 n (range $1 <=> rng)) }
-    | '*' exp  %prec NEG  {A.Unop A.ADeref $2 (loc $1 <=> (range $2))}
+    | '*' exp  %prec NEG  {A.Unop A.ARef $2 (loc $1 <=> (range $2))}
     | '-' exp  %prec NEG  {A.Unop A.AMinus $2 (loc $1 <=> (range $2))}
     |  null               {A.Null (loc $1)}
     | '(' exp ')'  {$2}
 
-lexp 
-    : identifier {unTok $1 (\(T.Identifier n) rng -> A.Ident n rng)}
-    | '*' lexp   {A.AtRef $2 (loc $1 <=> (range $2))}
-    | '(' lexp ')' { $2 }
+-- lexp 
+    -- : identifier {unTok $1 (\(T.Identifier n) rng -> A.Ident n rng)}
+    -- | '*' lexp   {A.AtRef $2 (loc $1 <=> (range $2))}
+    -- | '(' lexp ')' { $2 }
     -- | '&' identifier {}
     -- | '{' record_list '}' {}
 
 stm 
-    : lexp ':=' exp ';' {A.SimpleAssign $1 $3 (range $1 <=> (loc $4))}
-    | lexp '.' identifier ':=' exp ';' {unTok $3 (\(T.Identifier n) _ -> A.FieldAssign $1 n $5 (range $1 <=> (loc $6)))}
+    : identifier ':=' exp ';' {unTok $1 (\(T.Identifier n) rng -> A.SimpleAssign (A.Ident n rng) $3 (rng <=> (loc $4)))}
+    | exp ':=' exp ';' {A.SimpleAssign (A.ExprWrite $1 (range $1)) $3 (range $1 <=> (loc $4))}
+    | exp '.' identifier ':=' exp ';' {unTok $3 (\(T.Identifier n) rng -> A.FieldAssign (A.IndirectWrite $1 n (range $1 <=> rng)) $5 (range $1 <=> (loc $6)))}
     | output exp ';'          {A.Output $2 (loc $1 <=> (loc $3))}
     | stm stm           %shift{A.Seq $1 $2 ($1 <-> $2)}
     | if '(' exp ')' '{' stm '}' else '{' stm '}' {A.IfStmt $3 $6 (Just $10) (loc $1 <=> (loc $11))}
