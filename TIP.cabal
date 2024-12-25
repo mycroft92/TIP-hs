@@ -26,8 +26,8 @@ source-repository head
 library
   exposed-modules:
       AST.AST
-      AST.FreshMonad
       AST.NAST
+      AST.Normalization
       Lib
       Parser.Lexer
       Parser.Parser

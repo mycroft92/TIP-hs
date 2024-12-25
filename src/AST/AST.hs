@@ -1,7 +1,7 @@
 module AST.AST where
 
-import AST.FreshMonad (TypeVar)
 import Parser.Lexer(Range, Range(Range))
+type TypeVar = Int
 --data Loc  = Loc {start:: (Int, Int), end:: (Int,Int)} deriving (Show, Eq)
 data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Show, Eq)
 
