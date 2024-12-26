@@ -21,16 +21,16 @@ data Func  = Func !String ![String] deriving (Eq, Show)
 data NStmt = 
     NEAssign !NLexp !NExpr
    | NOutput !NExpr
-   | NSeq !NStmt !NStmt
-   | NIfStmt !NExpr !NStmt !(Maybe NStmt)
-   | NWhile !NExpr !NStmt 
+ --  | NSeq !NStmt !NStmt
+   | NIfStmt !NExpr ![NStmt] !(Maybe [NStmt])
+   | NWhile !NExpr ![NStmt] 
    | NFCAssign !NLexp !Func deriving (Show, Eq)
 
 data NFunDec = NFunDec {
          nfname  :: String,
          nfargs  :: [String],
          nfvars  :: [String],
-         nfbody  :: NStmt,
+         nfbody  :: [NStmt],
          nfret   :: NExpr} deriving (Eq, Show)
 
  

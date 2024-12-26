@@ -19,7 +19,7 @@ data AExpr =
       | VarRef !String !Range
       | Null !Range
       | Record ![RecField] !Range
-      | RecordField !String !AExpr !Range
+      -- | RecordField !String !AExpr !Range
       | FieldAccess !AExpr !String !Range
       -- | DerefExp !AExpr !Range
       | CallExpr !AExpr ![AExpr] !Range deriving (Eq, Show)
@@ -59,7 +59,7 @@ instance Ranger AExpr where
     range (VarRef _ r) = r
     range (Null r) = r
     range (Record _ r) = r
-    range (RecordField _ _ r) = r
+    -- range (RecordField _ _ r) = r
     range (FieldAccess _ _ r) = r
     range (CallExpr _ _ r)    = r
     --range (DerefExp _ r)      = r
