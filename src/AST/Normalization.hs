@@ -42,14 +42,14 @@ normalizeLExp e@(ExprWrite aexp _) = do
     case id of
       (NId x) -> return (NIdent x)
       (NUnop ARef (NId x)) -> return (NDerefWrite x)
-      _ -> throwError $ "Normalization failed for: " ++ show  e
+      _ -> throwError $ "Normalization failed for Lexp: " ++ show  e
 normalizeLExp e@(DirectWrite rn fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite (Id rn _) fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite exp fn _) = do
     id <- normalizeExp exp
     case id of
       (NId x) -> return (NIndirectWrite x fn)
-      _       -> throwError $ "Normalization failed for: " ++ show e
+      _       -> throwError $ "Normalization failed for Lexp: " ++ show e
 
 normalizeExp :: AExpr -> Normalize NExpr
 normalizeExp e = undefined
