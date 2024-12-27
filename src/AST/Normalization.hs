@@ -9,6 +9,7 @@ import Control.Monad.State (StateT(runStateT),
       MonadTrans(lift))
 import Control.Monad.Except (ExceptT(..), runExceptT, throwError, catchError)
 import Control.Monad (forM)
+import Parser.TokenTypes (Token(String))
 
 -- Fresh var list needs to be created for every function
 data NormState = NormState {
@@ -94,7 +95,20 @@ normalizeExp (VarRef x _) = return (NVarRef x)
 normalizeExp (Alloc e _)  = do
     e' <- normalizeExp e
     return (NAlloc e')
-normalizeExp (CallExpr fe args _) = undefined
+normalizeExp (CallExpr fe args _) = do
+    fn'   <- caseNormExp fe
+    args' <- mapM caseNormExp args
+    new   <- newid
+    addStmt (NFCAssign (NIdent new) (Func fn' args'))
+    return (NId new)
+    where
+        caseNormExp :: AExpr -> Normalize String
+        caseNormExp e = do
+            e' <- normalizeExp e
+            case e' of
+              (NId x) -> return x
+              _       -> throwError $ "cannot normalize expr (function call) : "++show e ++ " normalized to :" ++ show e'
+
 
 
 normalizeStmt :: AStmt -> Normalize [NStmt]
