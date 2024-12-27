@@ -27,6 +27,10 @@ addStmt x = do
     state <- lift get
     lift $ put (state { stmts = x:stmts state})
 
+addAssignStmt :: String -> NExpr -> Normalize ()
+addAssignStmt id e = addStmt (NEAssign (NIdent id) e) 
+
+
 newid :: Normalize String
 newid = do
     st <- lift get
@@ -51,8 +55,47 @@ normalizeLExp e@(IndirectWrite exp fn _) = do
       (NId x) -> return (NIndirectWrite x fn)
       _       -> throwError $ "Normalization failed for Lexp: " ++ show e
 
+normalizeRecField :: RecField -> Normalize NRecField
+normalizeRecField (RecField x e _ ) = undefined
+
 normalizeExp :: AExpr -> Normalize NExpr
-normalizeExp e = undefined
+normalizeExp (Id s _ ) = return (NId s)
+normalizeExp (Binop e1 op e2 _) = do
+    e1' <- normalizeExp e1
+    e2' <- normalizeExp e2
+    return (NBinop e1' op e2')
+normalizeExp (Unop op e _) = do
+    e' <- normalizeExp e
+    return (NUnop op e')
+normalizeExp (Number x _) = return (NNum x)
+normalizeExp (Input _)    = return (NInput)
+normalizeExp (Record xs _) = do
+        es <- mapM normalizeRecField xs
+        return (NRec es)
+normalizeExp (Null _) = return NNull
+normalizeExp (FieldAccess (Id x _) fn _) = return (NFieldAccess x fn)
+normalizeExp e@(FieldAccess (Record xs _) fn _) = 
+    -- xs' <- mapM normalizeRecField xs
+    case findRecField xs fn of
+      Just e  -> normalizeExp e
+      Nothing -> throwError $ "No field : "++fn ++" in record expr: " ++ show e
+    where
+        findRecField :: [RecField] -> String -> Maybe AExpr
+        findRecField [] _ = Nothing
+        findRecField ((RecField n' e _ ):xs) n 
+                    | n' == n = Just e
+                    | otherwise = findRecField xs n
+normalizeExp (FieldAccess e fn _) = do
+    e' <- normalizeExp e
+    new <- newid
+    addAssignStmt new e'
+    return (NFieldAccess new fn)
+normalizeExp (VarRef x _) = return (NVarRef x)
+normalizeExp (Alloc e _)  = do
+    e' <- normalizeExp e
+    return (NAlloc e')
+normalizeExp (CallExpr fe args _) = undefined
+
 
 normalizeStmt :: AStmt -> Normalize [NStmt]
 normalizeStmt stm = undefined 

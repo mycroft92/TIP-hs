@@ -11,6 +11,7 @@ data NExpr = NId !String
     | NNum   !Int
     | NNull
     | NInput 
+    | NAlloc !NExpr
     | NRec ![NRecField] 
     | NFieldAccess !String !String
     | NVarRef !String deriving (Show, Eq)
