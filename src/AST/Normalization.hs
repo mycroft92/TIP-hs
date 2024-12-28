@@ -121,8 +121,6 @@ normalizeExp (CallExpr fe args _) = do
               (NId x) -> return x
               _       -> throwError $ "cannot normalize expr (function call) : "++show e ++ " normalized to :" ++ show e'
 
-
-
 normalizeStmt :: AStmt -> Normalize ()
 normalizeStmt (SimpleAssign le e _) = do
     le' <- normalizeLExp le
