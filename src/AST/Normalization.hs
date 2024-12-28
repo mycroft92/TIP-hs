@@ -117,11 +117,27 @@ normalizeExp (CallExpr fe args _) = do
 
 
 
-normalizeStmt :: AStmt -> Normalize [NStmt]
+normalizeStmt :: AStmt -> Normalize ()
 normalizeStmt (SimpleAssign le e _) = do
     le' <- normalizeLExp le
     e'  <- normalizeExp e
     addStmt (NEAssign le' e')
+    
      
-normalizeStmt (
+normalizeStmt (FieldAssign le e _) = do
+   le' <- normalizeLExp le
+   e'  <- normalizeExp e
+   case le' of
+     (NDirectWrite _ _) -> addStmt (NEAssign le' e')
+     (NIndirectWrite _ _) -> addStmt (NEAssign le' e')
+     _ -> throwError $ "Normalization failed, expected record type for lexp: " ++ show le ++ " got: "++ show le'
 
+normalizeStmt (Output ae _) = do
+    ae' <- normalizeExp ae
+    addStmt (NOutput ae')
+
+normalizeStmt (Seq st1 st2 _) = normalizeStmt st1 >> normalizeStmt st2
+
+normalizeStmt (IfStmt cond tstmt (Just fstmt) _) = undefined
+normalizeStmt (IfStmt cond tstmt Nothing _) = undefined
+normalizeStmt (WhileStmt cond block _) = undefined
