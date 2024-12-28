@@ -46,7 +46,7 @@ normalizeLExp e@(ExprWrite aexp _) = do
     id <- normalizeExp aexp
     case id of
       (NId x) -> return (NIdent x)
-      (NUnop ARef (NId x)) -> return (NDerefWrite x)
+      (NUnop ATimes (NId x)) -> return (NDerefWrite x)
       _ -> throwError $ "Normalization failed for Lexp: " ++ show  e
 normalizeLExp e@(DirectWrite rn fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite (Id rn _) fn _) = return (NDirectWrite rn fn)
@@ -67,7 +67,13 @@ normalizeExp (Binop e1 op e2 _) = do
     return (NBinop e1' op e2')
 normalizeExp (Unop op e _) = do
     e' <- normalizeExp e
-    return (NUnop op e')
+    case op of
+      -- Normalize the dereferencing so that we have lexps only in forms t, *t
+      ATimes -> do
+          new <- newid
+          addAssignStmt new e'
+          return (NUnop op (NId new))
+      _ -> return (NUnop op e')
 normalizeExp (Number x _) = return (NNum x)
 normalizeExp (Input _)    = return (NInput)
 normalizeExp (Record xs _) = do
@@ -112,4 +118,10 @@ normalizeExp (CallExpr fe args _) = do
 
 
 normalizeStmt :: AStmt -> Normalize [NStmt]
-normalizeStmt stm = undefined 
+normalizeStmt (SimpleAssign le e _) = do
+    le' <- normalizeLExp le
+    e'  <- normalizeExp e
+    addStmt (NEAssign le' e')
+     
+normalizeStmt (
+
