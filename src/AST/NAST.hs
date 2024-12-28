@@ -3,7 +3,10 @@ module AST.NAST where
 ---
 import AST.AST (Operator)
 
-data NRecField = RF !String !NExpr deriving (Show, Eq)
+data NRecField = RF !String !NExpr deriving (Eq)
+
+instance Show NRecField where
+    show (RF x e) = x ++ " : " ++ show e
 
 data NExpr = NId !String 
     | NBinop !NExpr !Operator !NExpr
@@ -14,7 +17,7 @@ data NExpr = NId !String
     | NAlloc !NExpr
     | NRec ![NRecField] 
     | NFieldAccess !String !String
-    | NVarRef !String deriving (Show, Eq)
+    deriving (Show, Eq)
 
 data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String | NIndirectWrite !String !String deriving (Show, Eq)
 
@@ -24,7 +27,8 @@ data NStmt =
    | NOutput !NExpr
  --  | NSeq !NStmt !NStmt
    | NIfStmt !NExpr ![NStmt] !(Maybe [NStmt])
-   | NWhile !NExpr ![NStmt] 
+   | NWhile !NExpr ![NStmt]
+   | NRefAssign !NLexp !String
    | NFCAssign !NLexp !Func deriving (Show, Eq)
 
 data NFunDec = NFunDec {

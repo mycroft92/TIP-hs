@@ -10,6 +10,7 @@ import Control.Monad.State (StateT(runStateT),
 import Control.Monad.Except (ExceptT(..), runExceptT, throwError, catchError)
 import Control.Monad (forM)
 import Parser.TokenTypes (Token(String))
+import Control.Exception (bracket)
 
 -- Fresh var list needs to be created for every function
 data NormState = NormState {
@@ -35,7 +36,7 @@ addAssignStmt id e = addStmt (NEAssign (NIdent id) e)
 newid :: Normalize String
 newid = do
     st <- lift get
-    let myid = "t" ++ show (freshvar st)
+    let myid = "$t" ++ show (freshvar st)
     lift $ put (st{freshvar = freshvar st + 1, id_list = myid : id_list st})
     return myid
 
@@ -97,7 +98,12 @@ normalizeExp (FieldAccess e fn _) = do
     new <- newid
     addAssignStmt new e'
     return (NFieldAccess new fn)
-normalizeExp (VarRef x _) = return (NVarRef x)
+--references come only at equation level    
+normalizeExp (VarRef x _) = do
+    new <- newid
+    addStmt (NRefAssign (NIdent new) x)
+    return (NId x)
+
 normalizeExp (Alloc e _)  = do
     e' <- normalizeExp e
     return (NAlloc e')
@@ -138,6 +144,41 @@ normalizeStmt (Output ae _) = do
 
 normalizeStmt (Seq st1 st2 _) = normalizeStmt st1 >> normalizeStmt st2
 
-normalizeStmt (IfStmt cond tstmt (Just fstmt) _) = undefined
-normalizeStmt (IfStmt cond tstmt Nothing _) = undefined
-normalizeStmt (WhileStmt cond block _) = undefined
+normalizeStmt (IfStmt cond tstmt (Just fstmt) _) = do
+    cond' <- normalizeExp cond
+    tstmt' <- handleBlock tstmt
+    fstmt' <- handleBlock fstmt
+    addStmt (NIfStmt cond' tstmt' (Just fstmt'))
+normalizeStmt (IfStmt cond tstmt Nothing _) = do
+    cond' <- normalizeExp cond
+    tstmt' <- handleBlock tstmt
+    addStmt (NIfStmt cond' tstmt' Nothing)
+
+normalizeStmt (WhileStmt cond block _) = do
+    cond' <- normalizeExp cond
+    block' <- handleBlock block
+    addStmt (NWhile cond' block')
+ 
+handleBlock :: AStmt -> Normalize [NStmt]
+handleBlock block = do
+    st <- lift get
+    -- reset state before running stmts
+    lift $ put (NormState {freshvar = freshvar st, id_list = [], stmts = []})
+    normalizeStmt block
+    blst <- lift get
+    let idlist = id_list st ++ id_list blst
+    let fv = freshvar blst
+    let block' = reverse (stmts blst)
+    -- put state back, new statement must be handled by top scope
+    lift $ put (NormState {freshvar = fv, id_list = idlist, stmts = stmts st})
+    return block'
+
+
+normalizeFunction :: AFuncDec -> IO (Either String NFunDec)
+normalizeFunction (Fun fn fargs fvars fbody fret _) = do
+    ret <- runStateT (runExceptT (normalizeStmt fbody >> normalizeExp fret)) initState
+    case ret of
+      (Left err, _) -> return $ Left err
+      (Right exp, NormState _ ids stmts) -> return $ Right (NFunDec fn fargs (fvars++ids) (reverse stmts) exp) 
+
+    
