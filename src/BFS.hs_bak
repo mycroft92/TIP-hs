@@ -1,0 +1,11 @@
+ 
+import Data.Maybe
+ 
+data Tree a = Node a (Maybe (Tree a)) (Maybe (Tree a))
+ 
+levelOrderTraversal :: Tree a -> [[a]]
+levelOrderTraversal tree0 = go [tree0] where
+    go []    = []
+    go trees = layer : go (descendants >>= catMaybes) where
+        (layer, descendants) = unzip $ map (\(Node x lMay rMay) -> (x, [lMay, rMay])) trees
+ 
