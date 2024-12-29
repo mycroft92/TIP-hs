@@ -1,13 +1,25 @@
 module AST.AST where
 
 import Parser.Lexer(Range, Range(Range))
+import Data.List (intercalate)
 type TypeVar = Int
 --data Loc  = Loc {start:: (Int, Int), end:: (Int,Int)} deriving (Show, Eq)
-data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Show, Eq)
+data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Eq)
+
+instance Show Type where
+    show INT = "int"
+    show (Var v) = "t" ++ show v
+    show (Points t) = "&" ++ show t
+    show (Arrow args ret) = "(" ++ intercalate ", " (map show args) ++ ") -> " ++ show ret
+    show (Mu v t) = "mu t" ++ show v ++ "." ++ show t
 
 data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd  deriving (Eq)
 
-data RecField = RecField !String !AExpr !Range deriving (Show, Eq) 
+data RecField = RecField !String !AExpr !Range deriving Eq 
+-- write a show Instance for RecField with id : expr.
+
+instance Show RecField where
+    show (RecField id expr r) = id ++ " : " ++ show expr ++ " @" ++ show r
 
 data AExpr = 
     Id !String !Range 
