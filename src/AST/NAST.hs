@@ -76,3 +76,31 @@ instance Show NFunDec where
         name ++ "(" ++ intercalate ", " args ++ ") " ++ "{\n" ++
         " vars " ++ intercalate ", " vars ++ ";\n " ++
         intercalate "; \n" (map show body) ++ ";\n return " ++ show ret ++ "}"
+-- write a function to display NFunDec with proper nesting in nested If blocks.
+
+showNFunDec :: NFunDec -> String
+showNFunDec (NFunDec name args vars body ret) =
+    name ++ "(" ++ intercalate ", " args ++ ") {\n" ++
+    "  vars " ++ intercalate ", " vars ++ ";\n" ++
+    showNStmts 1 body ++
+    "  return " ++ show ret ++ "\n}"
+
+showNStmts :: Int -> [NStmt] -> String
+showNStmts indent stmts = concatMap (showNStmt indent) stmts
+
+showNStmt :: Int -> NStmt -> String
+showNStmt indent stmt = case stmt of
+    NIfStmt cond thenStmts elseStmts ->
+        indentation ++ "if (" ++ show cond ++ ") {\n" ++
+        showNStmts (indent + 1) thenStmts ++
+        indentation ++ "}" ++
+        maybe "" (\stmts -> " else {\n" ++ showNStmts (indent + 1) stmts ++ indentation ++ "}") elseStmts ++
+        "\n"
+    NWhile cond stmts ->
+        indentation ++ "while (" ++ show cond ++ ") {\n" ++
+        showNStmts (indent + 1) stmts ++
+        indentation ++ "}\n"
+    _ -> indentation ++ show stmt ++ ";\n"
+  where
+    indentation = replicate (2 * indent) ' '
+
