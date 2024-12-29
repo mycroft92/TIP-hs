@@ -5,7 +5,7 @@ type TypeVar = Int
 --data Loc  = Loc {start:: (Int, Int), end:: (Int,Int)} deriving (Show, Eq)
 data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Show, Eq)
 
-data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd  deriving (Show, Eq)
+data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd  deriving (Eq)
 
 data RecField = RecField !String !AExpr !Range deriving (Show, Eq) 
 
@@ -85,3 +85,17 @@ c <-> d = fromTo (range c) (range d)
     where
         fromTo :: Range -> Range -> Range
         fromTo (Range a1 _) (Range _ b2) = Range a1 b2
+
+instance Show Operator where
+    show APlus = "+"
+    show AMinus = "-" 
+    show ATimes = "*"
+    show ADivide = "/"
+    show AEqq = "=="
+    show ANEq = "!="
+    show AGt = ">"
+    show AGe = ">="
+    show ALe = "<="
+    show ALt = "<"
+    show ALOr = "||"
+    show ALAnd = "&&"
