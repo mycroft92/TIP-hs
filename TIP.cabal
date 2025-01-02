@@ -26,8 +26,10 @@ source-repository head
 library
   exposed-modules:
       AST.AST
+      AST.DFS
       AST.NAST
       AST.Normalization
+      AST.NormDFS
       Lib
       Parser.Lexer
       Parser.Parser

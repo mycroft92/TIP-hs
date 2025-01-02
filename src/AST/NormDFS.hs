@@ -1,4 +1,6 @@
-module TypeChecking.TypeChecker where
+module AST.NormDFS where
+
+import AST.NAST
 
 import Control.Exception (bracket)
 import Control.Monad (forM)
@@ -11,11 +13,4 @@ import Control.Monad.State (
  )
 import Data.Foldable (foldlM, foldrM)
 
-import AST.AST
-
--- This is the only analysis we do on AST, rest all its on Normalized AST
-data TypeState = TS
-    {
-    }
-
--- constraints
+type Visitor s a = ExceptT String (StateT s IO) a
