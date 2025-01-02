@@ -1,4 +1,4 @@
-module AST.NormDFS where
+module Analysis.NormDFS where
 
 import AST.NAST
 

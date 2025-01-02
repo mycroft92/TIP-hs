@@ -1,4 +1,4 @@
-module TypeChecking.TypeChecker where
+module Analysis.TypeChecker where
 
 import Control.Exception (bracket)
 import Control.Monad (forM)

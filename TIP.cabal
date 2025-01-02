@@ -25,16 +25,15 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.NormDFS
+      Analysis.TypeChecker
       AST.AST
-      AST.DFS
       AST.NAST
       AST.Normalization
-      AST.NormDFS
       Lib
       Parser.Lexer
       Parser.Parser
       Parser.TokenTypes
-      TypeChecking.TypeChecker
   other-modules:
       Paths_TIP
   autogen-modules:
