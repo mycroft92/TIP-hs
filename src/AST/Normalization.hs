@@ -2,11 +2,9 @@ module AST.Normalization where
 
 import AST.AST
 import AST.NAST
-import Control.Exception (bracket)
-import Control.Monad (forM)
 import Control.Monad.Except (ExceptT (..), catchError, runExceptT, throwError)
 import Control.Monad.State (
-    MonadIO (liftIO),
+    -- MonadIO (liftIO),
     MonadState (get, put),
     MonadTrans (lift),
     StateT (runStateT),
