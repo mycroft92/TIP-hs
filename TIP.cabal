@@ -34,6 +34,7 @@ library
       Parser.Lexer
       Parser.Parser
       Parser.TokenTypes
+      Solvers.Unification
   other-modules:
       Paths_TIP
   autogen-modules:
