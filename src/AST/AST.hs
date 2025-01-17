@@ -6,13 +6,13 @@ import Parser.Lexer (Range (Range))
 type TypeVar = Int
 
 -- data Loc  = Loc {start:: (Int, Int), end:: (Int,Int)} deriving (Show, Eq)
-data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] | Mu !TypeVar !Type deriving (Eq, Ord)
+data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVar !Type deriving (Eq, Ord)
 
 instance Show Type where
     show INT = "int"
     show (Var v) = "t" ++ show v
     show (Points t) = "&" ++ show t
-    show (Arrow args) = "(" ++ intercalate "->" (map show args) ++ ")"
+    show (Arrow args ret) = "(" ++ intercalate "," (map show args) ++ ")" ++ "->" ++ show ret
     show (Mu v t) = "mu " ++ show v ++ "." ++ show t
 
 data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd deriving (Eq)

@@ -3,7 +3,17 @@ module Solvers.Unification where
 import AST.AST (Type (..), TypeVar)
 import Solvers.UnionFindSolver
 
--- import qualified Data.Map as Map
+import qualified Data.Map as Map
+
+import Control.Monad.Except (ExceptT (..), catchError, runExceptT, throwError)
+import Control.Monad.State (
+    MonadIO (liftIO),
+    MonadState (get, put),
+    MonadTrans (lift),
+    State,
+    runState,
+    -- StateT (runStateT),
+ )
 
 -- type Subst = Map.Map TypeVar Type
 
@@ -11,7 +21,7 @@ vars' :: Type -> [TypeVar]
 vars' INT = []
 vars' (Var i) = [i]
 vars' (Points t) = vars' t
-vars' (Arrow args) = concatMap vars' args
+vars' (Arrow args ret) = concatMap vars' (ret : args)
 vars' (Mu t typ) = filter (/= t) (vars' typ)
 
 -- Need occurs check, apply substs to a term, union substs routines
@@ -19,7 +29,7 @@ occursCheck :: TypeVar -> Type -> Bool
 occursCheck v (Var i) = i == v
 occursCheck _ INT = False
 occursCheck v (Points t) = occursCheck v t
-occursCheck v (Arrow args) = checkargs
+occursCheck v (Arrow args ret) = checkargs
   where
     checkargs =
         foldl
@@ -28,7 +38,7 @@ occursCheck v (Arrow args) = checkargs
                 _ -> acc
             )
             False
-            args
+            (ret : args)
 occursCheck v (Mu v' t) = (v /= v') && occursCheck v t
 
 -- implements substition v/x in t
@@ -39,9 +49,20 @@ subst t@(Var x') x v
     | otherwise = t
 subst INT _ _ = INT
 subst (Points t) x v = Points (subst t x v)
-subst (Arrow args) x v = Arrow (map (\t -> subst t x v) args)
+subst (Arrow args ret) x v = Arrow (map (\t -> subst t x v) args) (subst ret x v)
 subst (Mu x' t) x v
     | x == x' = Mu x' t
     | otherwise = Mu x' (subst t x v)
 
--- close ::
+type VarMap = Map.Map Int Int
+
+data FreshState = FS
+    { freshVar :: Int
+    , varMap :: VarMap
+    }
+
+type Fresh a = State FreshState a
+
+-- need a fresh monad setup for this
+close :: Substs Type -> Type -> VarMap -> Type
+close = undefined
