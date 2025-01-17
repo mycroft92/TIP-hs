@@ -54,6 +54,12 @@ subst (Mu x' t) x v
     | x == x' = Mu x' t
     | otherwise = Mu x' (subst t x v)
 
+unify' :: Substs Type -> Type -> Type -> Either String (Substs Type)
+unify' ss t1 t2 = undefined
+
+unify :: Type -> Type -> Either String (Substs Type)
+unify = unify' Map.empty
+
 type VarMap = Map.Map Int Int
 
 data FreshState = FS
