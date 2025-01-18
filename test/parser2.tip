@@ -1,12 +1,12 @@
 recurse (n) {
  var f;
- if (n=0) { f := 1;}
- else {f := n*recurse(n-1);}
+ if (n==0) { f = 1;}
+ else {f = n*recurse(n-1);}
  return f;
 }
 
 main() {
     var n;
-    n := input;
+    n = input;
     return recurse(n);
 }

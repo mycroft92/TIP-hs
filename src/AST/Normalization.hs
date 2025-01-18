@@ -64,7 +64,9 @@ normalizeExp (Id s _) = return (NId s)
 normalizeExp (Binop e1 op e2 _) = do
     e1' <- normalizeExp e1
     e2' <- normalizeExp e2
-    return (NBinop e1' op e2')
+    new <- newid
+    addAssignStmt new (NBinop e1' op e2')
+    return (NId new)
 normalizeExp (Unop op e _) = do
     e' <- normalizeExp e
     case op of
@@ -112,6 +114,7 @@ normalizeExp (CallExpr fe args _) = do
     addStmt (NFCAssign (NIdent new) (Func fn' args'))
     return (NId new)
   where
+    -- either this needs to allow Binops or Binops need a temporary added, choosing the latter
     caseNormExp :: AExpr -> Normalize String
     caseNormExp e = do
         e' <- normalizeExp e

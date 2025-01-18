@@ -45,12 +45,12 @@ import qualified Parser.TokenTypes as T
   '-'        { L.RangedToken T.Minus _ }
   '*'        { L.RangedToken T.Times _ }
   '/'        { L.RangedToken T.Divide _ }
-  ':='       { L.RangedToken T.Assign _}
+  '='       { L.RangedToken T.Assign _}
   '.'        { L.RangedToken T.Dot _}
   ';'        { L.RangedToken T.Semi _}
   '&'        {L.RangedToken T.Ampersand _}
   -- Comparison operators
-  '='        { L.RangedToken T.Eq _ }
+  '=='        { L.RangedToken T.Eq _ }
   '<>'       { L.RangedToken T.Neq _ }
   '<'        { L.RangedToken T.Lt _ }
   '<='       { L.RangedToken T.Le _ }
@@ -74,12 +74,12 @@ import qualified Parser.TokenTypes as T
 %right ';'
 %left function var
 %right else  while if
-%nonassoc ':='
+%nonassoc '='
 %left '||' '&&'
 %left '+' '-'
 %left '*' '/'
 %left NEG
-%nonassoc '=' '<>' '<' '>' '<=' '>='
+%nonassoc '==' '<>' '<' '>' '<=' '>='
 %right alloc
 %left '.'
 %right '(' '{'
@@ -98,7 +98,7 @@ binop
     | '/'  %shift {$1}
     | '-'  %shift {$1}
     | '+'  %shift {$1}
-    | '='  %shift {$1}
+    | '=='  %shift {$1}
     | '<>' %shift {$1}
     | '<'  %shift {$1}
     | '>'  %shift {$1}
@@ -128,7 +128,7 @@ exp
     | exp '-'  exp %shift {A.Binop $1 A.AMinus $3 ($1 <-> $3)}
     | exp '/'  exp %shift {A.Binop $1 A.ADivide $3 ($1 <-> $3)}
     | exp '*'  exp %shift {A.Binop $1 A.ATimes $3 ($1 <-> $3)}
-    | exp '='  exp        {A.Binop $1 A.AEqq $3 ($1 <-> $3)}
+    | exp '=='  exp        {A.Binop $1 A.AEqq $3 ($1 <-> $3)}
     | exp '<>' exp        {A.Binop $1 A.ANEq $3 ($1 <-> $3)}
     | exp '<'  exp        {A.Binop $1 A.ALt $3 ($1 <-> $3)}
     | exp '>'  exp        {A.Binop $1 A.AGt $3 ($1 <-> $3)}
@@ -154,9 +154,9 @@ exp
     -- | '{' record_list '}' {}
 
 stm 
-    : identifier ':=' exp ';' {unTok $1 (\(T.Identifier n) rng -> A.SimpleAssign (A.Ident n rng) $3 (rng <=> (loc $4)))}
-    | exp ':=' exp ';' {A.SimpleAssign (A.ExprWrite $1 (range $1)) $3 (range $1 <=> (loc $4))}
-    | exp '.' identifier ':=' exp ';' {unTok $3 (\(T.Identifier n) rng -> A.FieldAssign (A.IndirectWrite $1 n (range $1 <=> rng)) $5 (range $1 <=> (loc $6)))}
+    : identifier '=' exp ';' {unTok $1 (\(T.Identifier n) rng -> A.SimpleAssign (A.Ident n rng) $3 (rng <=> (loc $4)))}
+    | exp '=' exp ';' {A.SimpleAssign (A.ExprWrite $1 (range $1)) $3 (range $1 <=> (loc $4))}
+    | exp '.' identifier '=' exp ';' {unTok $3 (\(T.Identifier n) rng -> A.FieldAssign (A.IndirectWrite $1 n (range $1 <=> rng)) $5 (range $1 <=> (loc $6)))}
     | output exp ';'          {A.Output $2 (loc $1 <=> (loc $3))}
     | stm stm           %shift{A.Seq $1 $2 ($1 <-> $2)}
     | if '(' exp ')' '{' stm '}' else '{' stm '}' {A.IfStmt $3 $6 (Just $10) (loc $1 <=> (loc $11))}

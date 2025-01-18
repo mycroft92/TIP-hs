@@ -75,13 +75,13 @@ tokens :-
 <0> "-"     {tok Minus}
 <0> "*"     {tok Times}
 <0> "/"     {tok Divide}
-<0> ":="    {tok Assign}
+<0> "="    {tok Assign}
 <0> "."     {tok Dot}
 <0> ";"     {tok Semi}
 <0> "&"     {tok Ampersand}
 
 -- Comparison operators
-<0> "="     {tok Eq}
+<0> "=="     {tok Eq}
 <0> "<>"    {tok Neq}
 <0> "<"     {tok Lt}
 <0> "<="    {tok Le}
