@@ -1,4 +1,4 @@
-module AST.Normalization where
+module AST.Normalization (normalizeFunction) where
 
 import AST.AST
 import AST.NAST
