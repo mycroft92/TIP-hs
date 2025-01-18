@@ -10,7 +10,7 @@ data Type = INT | Var !TypeVar | Points !Type | Arrow ![Type] !Type | Mu !TypeVa
 
 instance Show Type where
     show INT = "int"
-    show (Var v) = "t" ++ show v
+    show (Var v) = "var" ++ show v
     show (Points t) = "&" ++ show t
     show (Arrow args ret) = "(" ++ intercalate "," (map show args) ++ ")" ++ "->" ++ show ret
     show (Mu v t) = "mu " ++ show v ++ "." ++ show t
