@@ -30,6 +30,8 @@ library
       AST.AST
       AST.NAST
       AST.Normalization
+      Interpreter.Interpreter
+      Interpreter.SemanticValues
       Lib
       Parser.Lexer
       Parser.Parser

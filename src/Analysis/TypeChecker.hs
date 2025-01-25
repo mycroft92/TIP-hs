@@ -27,6 +27,7 @@ look k e = Map.lookup k e
 data TypeState = TS
     { varEnv :: Env
     , funcEnv :: Env -- This has resolved global func types
+    , freshVar :: Int
     }
 
 type TypeCheck a = ExceptT String (StateT TypeState IO) a
@@ -54,7 +55,7 @@ getVarType fname = do
     return (look fname (varEnv x))
 
 initState :: TypeState
-initState = TS Map.empty Map.empty
+initState = TS Map.empty Map.empty 0
 
 runTypeChecker :: [AFuncDec] -> IO (Either String TypeState)
 runTypeChecker funcs = do
