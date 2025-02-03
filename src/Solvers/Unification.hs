@@ -1,4 +1,4 @@
-module Solvers.Unification (close, unify, unify') where
+module Solvers.Unification (close, unify, unify', substSoln, Solution, solution) where
 
 import AST.AST (Type (..), TypeVar)
 import Solvers.UnionFindSolver
@@ -21,6 +21,7 @@ import Data.Foldable (foldlM)
 import qualified Data.Set as Set
 
 -- type Subst = Map.Map TypeVar Type
+type Solution = Map.Map TypeVar Type
 
 vars' :: Type -> [TypeVar]
 vars' INT = []
@@ -48,6 +49,18 @@ occursCheck v (Mu v' t) = (v /= v') && occursCheck v t
 
 -- implements substition v/x in t
 -- not checking capturing free variables
+solution :: Substs Type -> Solution
+solution ss = Map.foldrWithKey checkKey Map.empty ss
+  where
+    checkKey (Var k) v acc = Map.insert k v acc
+    checkKey _ _ acc = acc
+
+showSolution :: Solution -> String
+showSolution ss = Map.foldl (\k v -> "Var " ++ show k ++ " :: " ++ show v ++ "\n") "" ss
+
+substSoln :: Type -> Solution -> Type
+substSoln x ss = Map.foldrWithKey (\k v acc -> subst acc k v) x ss
+
 subst :: Type -> TypeVar -> Type -> Type
 subst t@(Var x') x v
     | x' == x = v

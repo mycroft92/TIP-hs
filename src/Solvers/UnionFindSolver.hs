@@ -22,12 +22,3 @@ union x y ss =
     let xr = find x ss
      in let yr = find y ss
          in if xr /= yr then Map.insert xr yr ss else ss
-
-solution :: Substs Type -> Substs Type
-solution ss = Map.filterWithKey checkKey ss
-  where
-    checkKey (Var _) _ = True
-    checkKey _ _ = False
-
-showSolution :: Substs Type -> String
-showSolution ss = Map.foldl (\k v -> show k ++ " :: " ++ show v ++ "\n") "" (solution ss)
