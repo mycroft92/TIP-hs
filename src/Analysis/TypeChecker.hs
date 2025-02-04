@@ -4,6 +4,7 @@ import Control.Monad (forM)
 import Data.Foldable (foldlM, foldrM)
 import Data.Map as Map (Map, empty, foldrWithKey, fromList, insert, lookup, member)
 import Solvers.Unification
+import Solvers.UnionFindSolver (Substs)
 
 -- MonadIO (liftIO),
 
@@ -29,7 +30,7 @@ data TypeState = TS
     { varEnv :: Env
     , funcEnv :: Env -- This has resolved global func types
     , freshVar :: Int
-    , soln :: Solution
+    , soln :: Substs Type
     }
 
 type TypeCheck a = ExceptT String (StateT TypeState IO) a
@@ -59,14 +60,22 @@ getVarType fname = do
 getSoln :: TypeCheck Solution
 getSoln = do
     st <- lift get
-    return (soln st)
+    return (solution . soln $ st)
 
-addSoln :: Solution -> TypeCheck ()
-addSoln ss = do
+applySoln :: Type -> TypeCheck Type
+applySoln ty = do
+    sol <- getSoln
+    return (substSoln ty sol)
+
+-- This function is the workhorse of unification, it keeps maintaining the state (of equivalent type expressions)
+unifyTypes :: Type -> Type -> TypeCheck ()
+unifyTypes t1 t2 = do
     st <- lift get
-    -- not checking conflicts currently, we perform substitution at every stage hence this should work
-    let sol' = Map.foldrWithKey (\k v acc -> if Map.member k acc then acc else Map.insert k v acc) (soln st) ss
-    lift $ put (st{soln = sol'})
+    let subs = soln st
+    case unify' subs t1 t2 of
+        Left err -> throwError err
+        Right subs' -> do
+            lift $ put (st{soln = subs'})
 
 initState :: TypeState
 initState = TS Map.empty Map.empty 0 Map.empty
@@ -88,12 +97,30 @@ typeCheckExpr :: AExpr -> TypeCheck Type
 typeCheckExpr (Id name rng) = do
     x <- getVarType name
     case x of
-        Just ty -> return ty
+        Just ty -> return ty -- applySoln ty
         Nothing -> throwError $ "Undeclared identifier '" ++ name ++ "' used @" ++ show rng
 typeCheckExpr (Number _ _) = return INT
 typeCheckExpr e@(Binop e1 AEqq e2 r) = do
     e1ty <- typeCheckExpr e1
     e2ty <- typeCheckExpr e2
+    unifyTypes e1ty e2ty
     -- need to unify types e1ty and e2ty
     -- save the unification result in the map
     return INT
+typeCheckExpr e@(Binop e1 _ e2 r) = do
+    e1ty <- typeCheckExpr e1
+    e2ty <- typeCheckExpr e2
+    unifyTypes e1ty INT
+    unifyTypes e2ty INT
+    -- need to unify types e1ty and e2ty
+    -- save the unification result in the map
+    return INT
+typeCheckExpr (Input _) = return INT
+typeCheckExpr (Alloc e _) = do
+    ty <- typeCheckExpr e
+    return (Points ty)
+typeCheckExpr e@(VarRef name r) = do
+    ty <- getVarType name
+    case ty of
+        Just ty -> return (Points ty)
+        Nothing -> throwError $ "Undeclared identifier in VarRef expr:  " ++ show e
