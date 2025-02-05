@@ -15,7 +15,7 @@ instance Show Type where
     show (Arrow args ret) = "(" ++ intercalate "," (map show args) ++ ")" ++ "->" ++ show ret
     show (Mu v t) = "mu " ++ show v ++ "." ++ show t
 
-data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd deriving (Eq)
+data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd | Ampersand deriving (Eq)
 
 data RecField = RecField !String !AExpr !Range deriving (Eq)
 
