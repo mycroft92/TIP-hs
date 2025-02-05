@@ -124,4 +124,4 @@ typeCheckExpr e@(VarRef name r) = do
     case ty of
         Just ty -> return (Points ty)
         Nothing -> throwError $ "Undeclared identifier in VarRef expr:  " ++ show e
-typeCheckExpr (Unop Ampersand e _) = undefined
+typeCheckExpr (Unop ATimes e _) = undefined

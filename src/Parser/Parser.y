@@ -143,7 +143,6 @@ exp
     | exp '.' identifier %shift {unTok $3 (\(T.Identifier n) rng -> A.FieldAccess $1 n (range $1 <=> rng)) }
     | '*' exp  %prec NEG  {A.Unop A.ATimes $2 (loc $1 <=> (range $2))}
     | '-' exp  %prec NEG  {A.Unop A.AMinus $2 (loc $1 <=> (range $2))}
-    | '&' exp  %prec NEG  {A.Unop A.Ampersand $2 (loc $1 <=> (range $2))}
     |  null               {A.Null (loc $1)}
     | '(' exp ')'  {$2}
 
