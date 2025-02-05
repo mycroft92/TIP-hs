@@ -41,6 +41,13 @@ putVarEnv name typ = do
     let venv = add name typ (varEnv x)
     put (x{varEnv = venv})
 
+fresh :: TypeCheck Int
+fresh = do
+    st <- lift get
+    let fresh' = freshVar st
+    put (st{freshVar = fresh' + 1})
+    return fresh'
+
 putFuncEnv :: String -> Type -> TypeCheck ()
 putFuncEnv name typ = do
     x <- lift get
@@ -124,4 +131,9 @@ typeCheckExpr e@(VarRef name r) = do
     case ty of
         Just ty -> return (Points ty)
         Nothing -> throwError $ "Undeclared identifier in VarRef expr:  " ++ show e
-typeCheckExpr (Unop ATimes e _) = undefined
+typeCheckExpr (Unop ATimes e _) = do
+    ety <- typeCheckExpr e
+    newid <- fresh
+    -- ety should be a pointer type
+    unifyTypes (Points (Var newid)) ety
+    return (Var newid)
