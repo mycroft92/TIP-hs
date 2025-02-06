@@ -107,8 +107,21 @@ runTypeChecker funcs = do
 typeCheckProgram :: [AFuncDec] -> TypeCheck ()
 typeCheckProgram funcs = mapM_ typeCheckFun funcs
 
-typeCheckFun :: AFuncDec -> TypeCheck a
-typeCheckFun f = undefined
+typeCheckFun :: AFuncDec -> TypeCheck ()
+typeCheckFun (Fun name args vars body ret _) = do
+    argtys <- (mapM (\_ -> fresh) args)
+    retty <- fresh
+    putEnv name (Arrow (map Var argtys) (Var retty))
+    mapM_ (\(arg, ty) -> putEnv arg (Var ty)) (zip args argtys)
+    vartys <- (mapM (\_ -> fresh) vars)
+    mapM_ (\(arg, ty) -> putEnv arg (Var ty)) (zip vars vartys)
+    -- analyze the body
+    typeCheckStmt body
+    retty' <- typeCheckExpr ret
+    -- constrain the return type
+    unifyTypes (Var retty) retty'
+    ftype <- applySoln (Arrow (map Var argtys) (Var retty))
+    putGlobalEnv name ftype
 
 typeCheckExpr :: AExpr -> TypeCheck Type
 -- we need to check if the identifier maps to a function as well! Then do fresh variable renaming for args
@@ -181,4 +194,23 @@ typeCheckStmt (SimpleAssign le exp _) = do
     lety <- typeCheckLE le
     expty <- typeCheckExpr exp
     unifyTypes lety expty
-typeCheckStmt s = undefined
+typeCheckStmt (Output exp _) = do
+    expty <- typeCheckExpr exp
+    unifyTypes expty INT
+typeCheckStmt (Seq s1 s2 _) = do
+    typeCheckStmt s1
+    typeCheckStmt s2
+typeCheckStmt (IfStmt cond s1 (Just s2) _) = do
+    condty <- typeCheckExpr cond
+    unifyTypes condty INT
+    typeCheckStmt s1
+    typeCheckStmt s2
+typeCheckStmt (IfStmt cond s1 Nothing _) = do
+    condty <- typeCheckExpr cond
+    unifyTypes condty INT
+    typeCheckStmt s1
+typeCheckStmt (WhileStmt cond s _) = do
+    condty <- typeCheckExpr cond
+    unifyTypes condty INT
+    typeCheckStmt s
+typeCheckStmt (FieldAssign lexp exp _) = throwError "unimplemented"
