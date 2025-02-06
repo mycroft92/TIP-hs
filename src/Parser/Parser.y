@@ -78,8 +78,8 @@ import qualified Parser.TokenTypes as T
 %left '||' '&&'
 %left '+' '-'
 %left '*' '/'
-%left NEG
 %nonassoc '==' '<>' '<' '>' '<=' '>='
+%left NEG
 %right alloc
 %left '.'
 %right '(' '{'

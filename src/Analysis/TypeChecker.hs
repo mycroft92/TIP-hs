@@ -120,7 +120,7 @@ typeCheckFun (Fun name args vars body ret _) = do
     typeCheckStmt body
     retty' <- typeCheckExpr ret
     -- constrain the return type
-    unifyTypes (Var retty) retty'
+    unifyTypes retty' (Var retty)
     ftype <- applySoln (Arrow (map Var argtys) (Var retty))
     putGlobalEnv name ftype
 
@@ -194,8 +194,8 @@ typeCheckStmt :: AStmt -> TypeCheck ()
 typeCheckStmt (SimpleAssign le exp _) = do
     lety <- typeCheckLE le
     expty <- typeCheckExpr exp
-    liftIO $ print $ show le ++ " :: " ++ show lety
-    liftIO $ print $ show exp ++ " :: " ++ show expty
+    -- liftIO $ print $ show le ++ " :: " ++ show lety
+    -- liftIO $ print $ show exp ++ " :: " ++ show expty
 
     unifyTypes lety expty
 typeCheckStmt (Output exp _) = do

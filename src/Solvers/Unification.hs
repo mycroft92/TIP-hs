@@ -18,6 +18,7 @@ import Control.Monad.State (
     runState,
  )
 import Data.Foldable (foldlM)
+import Data.Maybe (fromJust)
 import qualified Data.Set as Set
 
 -- type Subst = Map.Map TypeVar Type
@@ -50,10 +51,14 @@ occursCheck v (Mu v' t) = (v /= v') && occursCheck v t
 -- implements substition v/x in t
 -- not checking capturing free variables
 solution :: Substs Type -> Solution
-solution ss = Map.foldrWithKey checkKey Map.empty ss
+solution ss = recurseSubst (Map.foldrWithKey checkKey Map.empty ss)
   where
     checkKey (Var k) v acc = Map.insert k v acc
     checkKey _ _ acc = acc
+
+    recurseSubst m = Map.foldrWithKey rec m m
+    rec k (Var v) a = if Map.member v a then Map.insert k (fromJust (Map.lookup v a)) a else a
+    rec k v a = a
 
 showSolution :: Solution -> String
 showSolution ss = Map.foldl (\k v -> "Var " ++ show k ++ " :: " ++ show v ++ "\n") "" ss

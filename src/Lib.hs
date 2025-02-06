@@ -21,7 +21,7 @@ runFile s = do
             outty <- runTypeChecker exp
             case outty of
                 Left err -> putStrLn err
-                Right ts -> print $ show (globalenv ts)
+                Right ts -> print $ "globalenv:: \n" ++ show (globalenv ts)
             print "Parse finished, normalizing:"
             funcs <- mapM normalizeFunction exp
             print funcs
