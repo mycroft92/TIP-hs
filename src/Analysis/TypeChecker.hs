@@ -11,6 +11,7 @@ import Solvers.UnionFindSolver (Substs)
 import AST.AST
 import Control.Monad.Except (ExceptT (..), catchError, runExceptT, throwError)
 import Control.Monad.State (
+    MonadIO (liftIO),
     MonadState (get, put),
     MonadTrans (lift),
     StateT (runStateT),
@@ -184,7 +185,7 @@ typeCheckLE :: LExp -> TypeCheck Type
 typeCheckLE e@(Ident name _) = do
     ty <- getType name
     case ty of
-        Just ty -> return (Points ty)
+        Just ty -> return ty
         Nothing -> throwError $ "Undeclared identifier in VarRef expr:  " ++ show e
 typeCheckLE (ExprWrite exp _) = typeCheckExpr exp
 typeCheckLE _ = throwError "unimplemented"
@@ -193,6 +194,9 @@ typeCheckStmt :: AStmt -> TypeCheck ()
 typeCheckStmt (SimpleAssign le exp _) = do
     lety <- typeCheckLE le
     expty <- typeCheckExpr exp
+    liftIO $ print $ show le ++ " :: " ++ show lety
+    liftIO $ print $ show exp ++ " :: " ++ show expty
+
     unifyTypes lety expty
 typeCheckStmt (Output exp _) = do
     expty <- typeCheckExpr exp

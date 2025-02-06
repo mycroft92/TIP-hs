@@ -178,10 +178,12 @@ functionDec
         unTok $1  (\(T.Identifier n) rng -> A.Fun n (reverse $3) [] $6 $8 (rng <=> (loc $10))) 
     }
 
-program
+program_
     : {[]}
     | functionDec {[$1]}
     | program functionDec {$2:$1}
+
+program : program_ {reverse $1}
 
 {
 

@@ -38,10 +38,27 @@ data AExpr
       FieldAccess !AExpr !String !Range
     | -- | DerefExp !AExpr !Range
       CallExpr !AExpr ![AExpr] !Range
-    deriving (Eq, Show)
+    deriving (Eq)
 
-data LExp = Ident !String !Range | ExprWrite !AExpr !Range | DirectWrite !String !String !Range | IndirectWrite !AExpr !String !Range deriving (Show, Eq)
-data AAssign = AAssign !LExp !AExpr !Range deriving (Eq, Show)
+instance Show AExpr where
+    show (Id name _) = name
+    show (Binop e1 op e2 _) = "(" ++ show e1 ++ show op ++ show e2 ++ ")"
+    show (Unop op e _) = "(" ++ show op ++ show e ++ ")"
+    show (Number i _) = show i
+    show (Input _) = "input"
+    show (Alloc exp _) = "alloc " ++ show exp
+    show (VarRef name _) = "&" ++ name
+    show (Null _) = "null"
+    show (CallExpr nexp args _) = show nexp ++ "(" ++ intercalate "," (map show args) ++ ")"
+    show _ = "unimplemented"
+
+data LExp = Ident !String !Range | ExprWrite !AExpr !Range | DirectWrite !String !String !Range | IndirectWrite !AExpr !String !Range deriving (Eq)
+data AAssign = AAssign !LExp !AExpr !Range deriving (Eq)
+
+instance Show LExp where
+    show (Ident name _) = name
+    show (ExprWrite exp _) = show exp
+    show _ = "unimplemented"
 
 data AStmt
     = SimpleAssign !LExp !AExpr !Range
@@ -50,7 +67,16 @@ data AStmt
     | Seq !AStmt !AStmt !Range
     | IfStmt !AExpr !AStmt !(Maybe AStmt) !Range
     | WhileStmt !AExpr !AStmt !Range
-    deriving (Eq, Show)
+    deriving (Eq)
+
+instance Show AStmt where
+    show (SimpleAssign le e _) = show le ++ " = " ++ show e
+    show (Output e _) = "output " ++ show e
+    show (Seq s1 s2 _) = show s1 ++ ";\n" ++ show s2
+    show (IfStmt c e1 (Just e2) _) = "if (" ++ show c ++ ") {" ++ show e1 ++ "} \n else {" ++ show e2 ++ "}"
+    show (IfStmt c e1 Nothing _) = "if (" ++ show c ++ ") {" ++ show e1 ++ "}"
+    show (WhileStmt c s _) = "while (" ++ show c ++ ") {" ++ show s ++ "}"
+    show _ = "unimplemented"
 
 data AFuncDec = Fun
     { fname :: String
@@ -60,8 +86,9 @@ data AFuncDec = Fun
     , fret :: AExpr
     , frange :: Range
     }
-    deriving (Eq, Show)
-
+    deriving (Eq)
+instance Show AFuncDec where
+    show (Fun fn fa vars body ret _) = show fn ++ "(" ++ intercalate "," (map show fa) ++ ") {" ++ intercalate "," (map show vars) ++ "\n" ++ show body ++ "\nreturn " ++ show ret ++ ";}"
 class Ranger c where
     range :: c -> Range
 
