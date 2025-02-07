@@ -128,6 +128,8 @@ runTypeChecker funcs = do
 typeCheckProgram :: [AFuncDec] -> TypeCheck ()
 typeCheckProgram funcs = do
     mapM_ typeCheckFun funcs
+    genv' <- getGlobalEnv
+    liftIO (print $ "Before closing: " ++ show genv')
     _ <- closeSoln
     genv <- getGlobalEnv
     liftIO (print $ "Typecheck solution: " ++ show genv)

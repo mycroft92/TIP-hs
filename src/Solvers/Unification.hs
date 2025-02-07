@@ -177,4 +177,4 @@ close :: Type -> Substs Type -> Type
 close t env = case runState (closeRec t Set.empty) (FS m Map.empty env) of
     (t', _) -> t'
   where
-    m = foldl max 0 (vars' t)
+    m = 1 + foldl max 0 (vars' t)
