@@ -136,7 +136,7 @@ exp
     | exp '>=' exp        {A.Binop $1 A.AGe $3 ($1 <-> $3)}
     | exp '&&' exp %shift {A.Binop $1 A.ALAnd $3 ($1 <-> $3)}
     | exp '||' exp %shift {A.Binop $1 A.ALOr $3 ($1 <-> $3)}
-    | exp '(' exp_list ')' {A.CallExpr $1 $3 ((range $1) <=> (loc $4))}
+    | exp '(' exp_list ')' {A.CallExpr $1 (reverse $3) ((range $1) <=> (loc $4))}
     | alloc exp  {A.Alloc $2 ((loc $1) <=> (range $2))}
     | '&' identifier {unTok $2 (\(T.Identifier n) rng -> A.VarRef n (loc $1 <=> rng))}
     | '{' record_list '}' {A.Record (reverse $2) (loc $1 <=> (loc $3))}
