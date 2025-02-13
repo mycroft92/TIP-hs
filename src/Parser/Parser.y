@@ -172,11 +172,17 @@ var_list
     : var id_list ';' {reverse $2}
 
 functionDec
-    : identifier '(' id_list ')' '{' var_list stm return exp ';' '}' {
-        unTok $1 (\(T.Identifier n) rng -> A.Fun n (reverse $3) $6 $7 $9 (rng <=> (loc $11))) }
-    | identifier '(' id_list ')' '{' stm return exp ';' '}'          {
+    : identifier '(' id_list ')' '{' stm return exp ';' '}'          {
         unTok $1  (\(T.Identifier n) rng -> A.Fun n (reverse $3) [] $6 $8 (rng <=> (loc $10))) 
     }
+    | identifier '(' id_list ')' '{' return exp ';' '}'          {
+        unTok $1  (\(T.Identifier n) rng -> A.Fun n (reverse $3) [] (A.NullStmt (loc $5)) $7 (rng <=> (loc $9))) 
+    }
+    | identifier '(' id_list ')' '{' var_list return exp ';' '}'          {
+        unTok $1  (\(T.Identifier n) rng -> A.Fun n (reverse $3) $6 (A.NullStmt (loc $7)) $8 (rng <=> (loc $10))) 
+    }
+    | identifier '(' id_list ')' '{' var_list stm return exp ';' '}' {
+        unTok $1 (\(T.Identifier n) rng -> A.Fun n (reverse $3) $6 $7 $9 (rng <=> (loc $11))) }
 
 program_
     : {[]}

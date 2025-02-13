@@ -1,0 +1,9 @@
+
+f(x) {
+  return 5*x ;
+}
+
+main () {
+
+  return f(alloc 1) + *(f(alloc (f (alloc 2))));
+}

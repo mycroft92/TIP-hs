@@ -151,6 +151,7 @@ normalizeStmt (WhileStmt cond block _) = do
     cond' <- normalizeExp cond
     block' <- handleBlock block
     addStmt (NWhile cond' block')
+normalizeStmt (NullStmt _) = return ()
 
 handleBlock :: AStmt -> Normalize [NStmt]
 handleBlock block = do

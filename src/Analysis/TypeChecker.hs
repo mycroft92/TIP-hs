@@ -254,4 +254,5 @@ typeCheckStmt (WhileStmt cond s _) = do
     condty <- typeCheckExpr cond
     unifyTypes condty INT cond cond
     typeCheckStmt s
+typeCheckStmt (NullStmt _) = return ()
 typeCheckStmt (FieldAssign lexp exp _) = throwError "unimplemented"

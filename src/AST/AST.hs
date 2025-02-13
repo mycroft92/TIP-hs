@@ -67,6 +67,7 @@ data AStmt
     | Seq !AStmt !AStmt !Range
     | IfStmt !AExpr !AStmt !(Maybe AStmt) !Range
     | WhileStmt !AExpr !AStmt !Range
+    | NullStmt !Range
     deriving (Eq)
 
 instance Show AStmt where
@@ -76,6 +77,7 @@ instance Show AStmt where
     show (IfStmt c e1 (Just e2) _) = "if (" ++ show c ++ ") {" ++ show e1 ++ "} \n else {" ++ show e2 ++ "}"
     show (IfStmt c e1 Nothing _) = "if (" ++ show c ++ ") {" ++ show e1 ++ "}"
     show (WhileStmt c s _) = "while (" ++ show c ++ ") {" ++ show s ++ "}"
+    show (NullStmt _) = ""
     show _ = "unimplemented"
 
 data AFuncDec = Fun
@@ -123,6 +125,7 @@ instance Ranger AStmt where
     range (Seq _ _ r) = r
     range (IfStmt _ _ _ r) = r
     range (WhileStmt _ _ r) = r
+    range (NullStmt r) = r
 
 instance Ranger AFuncDec where
     range (Fun _ _ _ _ _ r) = r
