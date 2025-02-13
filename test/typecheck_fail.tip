@@ -1,0 +1,9 @@
+
+
+f() {
+  var x;
+  x = alloc 17;
+  x = 5;
+  return x+87;
+  
+}

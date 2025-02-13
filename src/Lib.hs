@@ -16,7 +16,7 @@ runFile s = do
     case L.runAlex (BS.pack contents) parse of
         Left err -> putStr (show err) >> return 1
         Right exp -> do
-            print exp
+            -- print exp
             putStrLn "Running Type checker on parse output"
             outty <- runTypeChecker exp
             case outty of
@@ -26,5 +26,5 @@ runFile s = do
                 Right ts -> do
                     print "Parse finished, normalizing:"
                     funcs <- mapM normalizeFunction exp
-                    print funcs
+                    -- print funcs
                     return 0

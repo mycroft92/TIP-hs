@@ -133,8 +133,10 @@ typeCheckProgram funcs = do
     _ <- closeSoln
     genv <- getGlobalEnv
     liftIO (print $ "Typecheck solution: " ++ show genv)
-
-    return ()
+    case Map.lookup "main" genv of
+        Just (Arrow [] INT) -> return ()
+        Just x -> throwError $ "The type of main function should be: () -> INT, got: " ++ show x
+        Nothing -> return ()
 
 handleExp :: AExpr -> AExpr -> TypeCheck ()
 handleExp e1 e2 =
