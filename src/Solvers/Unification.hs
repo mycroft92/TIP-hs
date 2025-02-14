@@ -30,6 +30,7 @@ vars' (Var i) = [i]
 vars' (Points t) = vars' t
 vars' (Arrow args ret) = concatMap vars' (ret : args)
 vars' (Mu t typ) = filter (/= t) (vars' typ)
+vars' (Rec id_var_list) = concatMap (\(_, y) -> vars' y) id_var_list
 
 -- Need occurs check, apply substs to a term, union substs routines
 occursCheck :: TypeVar -> Type -> Bool
@@ -73,6 +74,7 @@ subst t@(Var x') x v
 subst INT _ _ = INT
 subst (Points t) x v = Points (subst t x v)
 subst (Arrow args ret) x v = Arrow (map (\t -> subst t x v) args) (subst ret x v)
+subst (Rec fields) x v = Rec (map (\(f, t) -> (f, subst t x v)) fields)
 subst (Mu x' t) x v
     | x == x' = Mu x' t
     | otherwise = Mu x' (subst t x v)
@@ -90,6 +92,7 @@ unify' ss t1 t2 =
     unify'' t1@(Var _) t2 = return $ union t1 t2 ss
     unify'' t1 t2@(Var _) = return $ union t2 t1 ss
     unify'' (Points t1) (Points t2) = unify' ss t1 t2
+    -- unify'' case for Rec
     unify'' x@(Arrow args1 ret1) y@(Arrow args2 ret2)
         | length args1 /= length args2 = Left $ "unification failure, arity mismatch \n t1: " ++ show x ++ "\n t2: " ++ show y
         | otherwise = foldlM (\acc (t1, t2) -> unify' acc t1 t2) ss (zip (ret1 : args1) (ret2 : args2))
@@ -165,6 +168,14 @@ closeRec (Mu v t) vst = do
     t' <- closeRec t vst
     return (Mu v t')
 closeRec t@(Arrow args ret) vst =
+    foldlM
+        ( \acc v -> do
+            closedv <- closeRec (Var v) vst
+            return (subst acc v closedv)
+        )
+        t
+        (vars' t)
+closeRec t@(Rec fields) vst =
     foldlM
         ( \acc v -> do
             closedv <- closeRec (Var v) vst
