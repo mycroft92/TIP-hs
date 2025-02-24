@@ -26,6 +26,7 @@ type Solution = Map.Map TypeVar Type
 
 vars' :: Type -> [TypeVar]
 vars' INT = []
+vars' Abs = []
 vars' (Var i) = [i]
 vars' (Points t) = vars' t
 vars' (Arrow args ret) = concatMap vars' (ret : args)
@@ -36,6 +37,7 @@ vars' (Rec id_var_list) = concatMap (\(_, y) -> vars' y) id_var_list
 occursCheck :: TypeVar -> Type -> Bool
 occursCheck v (Var i) = i == v
 occursCheck _ INT = False
+occursCheck _ Abs = False
 occursCheck v (Points t) = occursCheck v t
 occursCheck v (Arrow args ret) = checkargs
   where
@@ -72,6 +74,7 @@ subst t@(Var x') x v
     | x' == x = v
     | otherwise = t
 subst INT _ _ = INT
+subst Abs _ _ = Abs
 subst (Points t) x v = Points (subst t x v)
 subst (Arrow args ret) x v = Arrow (map (\t -> subst t x v) args) (subst ret x v)
 subst (Rec fields) x v = Rec (map (\(f, t) -> (f, subst t x v)) fields)
@@ -89,6 +92,7 @@ unify' ss t1 t2 =
                 else Right ss
   where
     unify'' INT INT = return ss
+    unify'' Abs Abs = return ss
     unify'' t1@(Var _) t2 = return $ union t1 t2 ss
     unify'' t1 t2@(Var _) = return $ union t2 t1 ss
     unify'' (Points t1) (Points t2) = unify' ss t1 t2
@@ -164,6 +168,7 @@ closeRec INT _ = return INT
 closeRec (Points t) vst = do
     t' <- closeRec t vst
     return (Points t')
+closeRec Abs _ = return Abs
 closeRec (Mu v t) vst = do
     t' <- closeRec t vst
     return (Mu v t')
