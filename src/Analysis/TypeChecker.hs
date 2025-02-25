@@ -2,6 +2,8 @@ module Analysis.TypeChecker where
 
 -- import Control.Monad (forM)
 -- import Data.Foldable (foldlM,foldrM)
+
+import AST.ASTHelper (appearingFields)
 import Data.Map as Map (Map, empty, foldrWithKey, fromList, insert, lookup, member)
 import Solvers.Unification
 import Solvers.UnionFindSolver (Substs)
@@ -33,6 +35,7 @@ data TypeState = TS
     , globalenv :: Env
     , freshVar :: Int
     , soln :: Substs Type
+    , fieldNames :: [String]
     }
 
 type TypeCheck a = ExceptT String (StateT TypeState IO) a
@@ -116,7 +119,7 @@ renameFType (Arrow args ret) = do
 renameFType ty = return ty
 
 initState :: TypeState
-initState = TS Map.empty Map.empty 0 Map.empty
+initState = TS Map.empty Map.empty 0 Map.empty []
 
 runTypeChecker :: [AFuncDec] -> IO (Either String TypeState)
 runTypeChecker funcs = do
@@ -127,6 +130,9 @@ runTypeChecker funcs = do
 
 typeCheckProgram :: [AFuncDec] -> TypeCheck ()
 typeCheckProgram funcs = do
+    let fnames = appearingFields funcs
+    st <- lift get
+    lift $ put (st{fieldNames = fnames})
     mapM_ typeCheckFun funcs
     genv' <- getGlobalEnv
     liftIO (print $ "Before closing: " ++ show genv')
