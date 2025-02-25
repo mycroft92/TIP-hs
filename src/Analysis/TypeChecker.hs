@@ -1,7 +1,7 @@
 module Analysis.TypeChecker where
 
-import Control.Monad (forM)
-import Data.Foldable (foldlM, foldrM)
+-- import Control.Monad (forM)
+-- import Data.Foldable (foldlM,foldrM)
 import Data.Map as Map (Map, empty, foldrWithKey, fromList, insert, lookup, member)
 import Solvers.Unification
 import Solvers.UnionFindSolver (Substs)

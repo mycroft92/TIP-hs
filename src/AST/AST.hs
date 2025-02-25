@@ -55,7 +55,6 @@ instance Show AExpr where
     show _ = "unimplemented"
 
 data LExp = Ident !String !Range | ExprWrite !AExpr !Range | DirectWrite !String !String !Range | IndirectWrite !AExpr !String !Range deriving (Eq)
-data AAssign = AAssign !LExp !AExpr !Range deriving (Eq)
 
 instance Show LExp where
     show (Ident name _) = name

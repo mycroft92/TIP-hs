@@ -28,6 +28,7 @@ library
       Analysis.NormDFS
       Analysis.TypeChecker
       AST.AST
+      AST.ASTHelper
       AST.NAST
       AST.Normalization
       Interpreter.Interpreter
