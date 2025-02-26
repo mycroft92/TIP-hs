@@ -31,6 +31,7 @@ library
       AST.ASTHelper
       AST.NAST
       AST.Normalization
+      Interpreter.Environment
       Interpreter.Interpreter
       Interpreter.SemanticValues
       Lib
