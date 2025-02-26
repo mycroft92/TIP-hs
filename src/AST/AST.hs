@@ -17,7 +17,7 @@ instance Show Type where
     show (Mu v t) = "mu " ++ show v ++ "." ++ show t
     show Abs = "◆"
 
-data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd deriving (Eq)
+data Operator = APlus | AMinus | ATimes | ADivide | AEqq | ANEq | AGt | AGe | ALe | ALt | ALOr | ALAnd deriving (Eq, Ord)
 
 data RecField = RecField !String !AExpr !Range deriving (Eq)
 

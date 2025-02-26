@@ -1,23 +1,26 @@
 module AST.NAST where
+
 --- Normalized AST description
 ---
 import AST.AST (Operator)
 import Data.List (intercalate)
-data NRecField = RF !String !NExpr deriving (Eq)
+
+data NRecField = RF !String !NExpr deriving (Eq, Ord)
 
 instance Show NRecField where
     show (RF x e) = x ++ " : " ++ show e
 
-data NExpr = NId !String 
+data NExpr
+    = NId !String
     | NBinop !NExpr !Operator !NExpr
-    | NUnop  !Operator !NExpr
-    | NNum   !Int
+    | NUnop !Operator !NExpr
+    | NNum !Int
     | NNull
-    | NInput 
+    | NInput
     | NAlloc !NExpr
-    | NRec ![NRecField] 
+    | NRec ![NRecField]
     | NFieldAccess !String !String
-    deriving (Eq)
+    deriving (Eq, Ord)
 
 instance Show NExpr where
     show (NId x) = x
@@ -30,7 +33,7 @@ instance Show NExpr where
     show (NRec fields) = "{" ++ unwords (map show fields) ++ "}"
     show (NFieldAccess r f) = r ++ "." ++ f
 
-data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String | NIndirectWrite !String !String deriving Eq
+data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String | NIndirectWrite !String !String deriving (Eq)
 
 instance Show NLexp where
     show (NIdent s) = s
@@ -38,52 +41,75 @@ instance Show NLexp where
     show (NDirectWrite r f) = r ++ "." ++ f
     show (NIndirectWrite r f) = r ++ "." ++ f
 
-data Func  = Func !String ![String] deriving (Eq, Show)
-data NStmt = 
-    NEAssign !NLexp !NExpr
-   | NOutput !NExpr
-   | NIfStmt !NExpr ![NStmt] !(Maybe [NStmt])
-   | NWhile !NExpr ![NStmt]
-   | NRefAssign !NLexp !String
-   | NFCAssign !NLexp !Func deriving (Eq)
+data Func = Func !String ![String] deriving (Eq, Show)
+data NStmt
+    = NEAssign !NLexp !NExpr
+    | NOutput !NExpr
+    | NIfStmt !NExpr ![NStmt] !(Maybe [NStmt])
+    | NWhile !NExpr ![NStmt]
+    | NRefAssign !NLexp !String
+    | NFCAssign !NLexp !Func
+    deriving (Eq)
 
 instance Show NStmt where
-        show (NEAssign lhs rhs) = show lhs ++ " := " ++ show rhs
-        show (NOutput expr) = "output " ++ show expr
-        show (NIfStmt cond thenStmts elseStmts) = 
-            " if (" ++ show cond ++ ") " ++ showStmts thenStmts ++
-            case elseStmts of
+    show (NEAssign lhs rhs) = show lhs ++ " := " ++ show rhs
+    show (NOutput expr) = "output " ++ show expr
+    show (NIfStmt cond thenStmts elseStmts) =
+        " if ("
+            ++ show cond
+            ++ ") "
+            ++ showStmts thenStmts
+            ++ case elseStmts of
                 Nothing -> ""
                 Just stmts -> " else " ++ showStmts stmts
-        show (NWhile cond stmts) = 
-            " while (" ++ show cond ++ ") " ++ showStmts stmts
-        show (NRefAssign lhs ref) = show lhs ++ " := &" ++ ref
-        show (NFCAssign lhs (Func name args)) = 
-            show lhs ++ " := " ++ name ++ "(" ++ unwords (map show args) ++ ")"
-    
-showStmts :: [NStmt] -> String  
+    show (NWhile cond stmts) =
+        " while (" ++ show cond ++ ") " ++ showStmts stmts
+    show (NRefAssign lhs ref) = show lhs ++ " := &" ++ ref
+    show (NFCAssign lhs (Func name args)) =
+        show lhs ++ " := " ++ name ++ "(" ++ unwords (map show args) ++ ")"
+
+showStmts :: [NStmt] -> String
 showStmts stmts = "{" ++ intercalate ";\n  " (map show stmts) ++ "}"
 
-data NFunDec = NFunDec {
-         nfname  :: String,
-         nfargs  :: [String],
-         nfvars  :: [String],
-         nfbody  :: [NStmt],
-         nfret   :: NExpr} deriving Eq
+data NFunDec = NFunDec
+    { nfname :: String
+    , nfargs :: [String]
+    , nfvars :: [String]
+    , nfbody :: [NStmt]
+    , nfret :: NExpr
+    }
+    deriving (Eq)
 
 instance Show NFunDec where
-    show (NFunDec name args vars body ret) = 
-        name ++ "(" ++ intercalate ", " args ++ ") " ++ "{\n" ++
-        " vars " ++ intercalate ", " vars ++ ";\n " ++
-        intercalate "; \n" (map show body) ++ ";\n return " ++ show ret ++ "}"
+    show (NFunDec name args vars body ret) =
+        name
+            ++ "("
+            ++ intercalate ", " args
+            ++ ") "
+            ++ "{\n"
+            ++ " vars "
+            ++ intercalate ", " vars
+            ++ ";\n "
+            ++ intercalate "; \n" (map show body)
+            ++ ";\n return "
+            ++ show ret
+            ++ "}"
+
 -- write a function to display NFunDec with proper nesting in nested If blocks.
 
 showNFunDec :: NFunDec -> String
 showNFunDec (NFunDec name args vars body ret) =
-    name ++ "(" ++ intercalate ", " args ++ ") {\n" ++
-    "  vars " ++ intercalate ", " vars ++ ";\n" ++
-    showNStmts 1 body ++
-    "  return " ++ show ret ++ "\n}"
+    name
+        ++ "("
+        ++ intercalate ", " args
+        ++ ") {\n"
+        ++ "  vars "
+        ++ intercalate ", " vars
+        ++ ";\n"
+        ++ showNStmts 1 body
+        ++ "  return "
+        ++ show ret
+        ++ "\n}"
 
 showNStmts :: Int -> [NStmt] -> String
 showNStmts indent stmts = concatMap (showNStmt indent) stmts
@@ -91,16 +117,23 @@ showNStmts indent stmts = concatMap (showNStmt indent) stmts
 showNStmt :: Int -> NStmt -> String
 showNStmt indent stmt = case stmt of
     NIfStmt cond thenStmts elseStmts ->
-        indentation ++ "if (" ++ show cond ++ ") {\n" ++
-        showNStmts (indent + 1) thenStmts ++
-        indentation ++ "}" ++
-        maybe "" (\stmts -> " else {\n" ++ showNStmts (indent + 1) stmts ++ indentation ++ "}") elseStmts ++
-        "\n"
+        indentation
+            ++ "if ("
+            ++ show cond
+            ++ ") {\n"
+            ++ showNStmts (indent + 1) thenStmts
+            ++ indentation
+            ++ "}"
+            ++ maybe "" (\stmts -> " else {\n" ++ showNStmts (indent + 1) stmts ++ indentation ++ "}") elseStmts
+            ++ "\n"
     NWhile cond stmts ->
-        indentation ++ "while (" ++ show cond ++ ") {\n" ++
-        showNStmts (indent + 1) stmts ++
-        indentation ++ "}\n"
+        indentation
+            ++ "while ("
+            ++ show cond
+            ++ ") {\n"
+            ++ showNStmts (indent + 1) stmts
+            ++ indentation
+            ++ "}\n"
     _ -> indentation ++ show stmt ++ ";\n"
   where
     indentation = replicate (2 * indent) ' '
-
