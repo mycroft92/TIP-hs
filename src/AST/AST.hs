@@ -54,7 +54,8 @@ instance Show AExpr where
     show (CallExpr nexp args _) = show nexp ++ "(" ++ intercalate "," (map show args) ++ ")"
     show _ = "unimplemented"
 
-data LExp = Ident !String !Range | ExprWrite !AExpr !Range | DirectWrite !String !String !Range | IndirectWrite !AExpr !String !Range deriving (Eq)
+-- before normalization everything is Indirectwrite
+data LExp = Ident !String !Range | ExprWrite !AExpr !Range | IndirectWrite !AExpr !String !Range deriving (Eq)
 
 instance Show LExp where
     show (Ident name _) = name
@@ -115,7 +116,6 @@ instance Ranger AExpr where
 -- range (DerefExp _ r)      = r
 instance Ranger LExp where
     range (Ident _ r) = r
-    range (DirectWrite _ _ r) = r
     range (IndirectWrite _ _ r) = r
     range (ExprWrite _ r) = r
 

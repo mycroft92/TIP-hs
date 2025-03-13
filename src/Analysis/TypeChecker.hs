@@ -18,6 +18,8 @@ import Control.Monad.State (
     MonadTrans (lift),
     StateT (runStateT),
  )
+import Data.Foldable (foldlM)
+import Data.Maybe (fromJust)
 
 type Env = (Map.Map String Type)
 
@@ -62,6 +64,10 @@ getGlobalEnv :: TypeCheck Env
 getGlobalEnv = do
     x <- lift get
     return (globalenv x)
+
+getUnifiedType :: Type -> TypeCheck (Maybe Type)
+getUnifiedType ty = do
+    Map.lookup ty <$> getSubsts
 
 fresh :: TypeCheck Int
 fresh = do
@@ -212,17 +218,78 @@ typeCheckExpr exp@(Unop AMinus e _) = do
     return INT
 typeCheckExpr e@(Unop _ _ _) = throwError $ "Invalid unop expression encountered " ++ show e
 typeCheckExpr (Null _) = do
-    newid <- fresh
-    return (Points (Var newid))
+    Points . Var <$> fresh
 typeCheckExpr exp@(CallExpr e args _) = do
     ety <- typeCheckExpr e
-    argtys <- (mapM typeCheckExpr args)
+    argtys <- mapM typeCheckExpr args
     newid <- fresh
     -- function type is same as expression's type (ex: function pointer deref)
     unifyTypes ety (Arrow argtys (Var newid)) exp exp
     return (Var newid)
-typeCheckExpr (Record _ _) = throwError "unimplemented"
-typeCheckExpr (FieldAccess _ _ _) = throwError "unimplemented"
+typeCheckExpr (Record fields _) = do
+    fieldTypes <-
+        foldlM
+            ( \acc (RecField fn exp _) -> do
+                expty <- typeCheckExpr exp
+                return ((fn, expty) : acc)
+            )
+            []
+            fields
+    Rec <$> _fillKeys fieldTypes
+typeCheckExpr e@(FieldAccess exp fn _) = do
+    -- fn shuld not be absent and exp has recordtype
+    -- generate record type for exp
+    expty <- typeCheckExpr exp
+    recty <- generateRecordType
+    unifyTypes expty recty exp e
+    -- add the constraint that it is not absent
+    -- currently we check locally
+    unifiedType <- getUnifiedType recty
+    -- probably should throw critical error when fromJust fails
+    let fty = fromJust $ getRecType fn (fromJust unifiedType)
+    if fty == Abs
+        then throwError $ "Absent field: " ++ show fty ++ " accessed in expr: " ++ show e
+        else
+            -- return the type of the record field
+            return (fromJust $ getRecType fn recty)
+
+getRecType :: String -> Type -> Maybe Type
+getRecType fn (Rec rs) = findKey fn rs
+  where
+    findKey fn ((fn', ty) : rs)
+        | fn == fn' = Just ty
+        | otherwise = findKey fn rs
+getRecType fn _ = Nothing
+
+generateRecordType :: TypeCheck Type
+generateRecordType =
+    -- throwError "unimplemented"
+    do
+        fns <- lift get
+        fieldTypes <-
+            foldlM
+                ( \acc fn -> do
+                    fty <- fresh
+                    return ((fn, Var fty) : acc)
+                )
+                []
+                (fieldNames fns)
+        return (Rec fieldTypes)
+
+_ismem :: String -> [(String, a)] -> Bool
+_ismem name [] = False
+_ismem name ((k, _) : ls) = (k == name) || _ismem name ls
+
+_fillKeys :: [(String, Type)] -> TypeCheck [(String, Type)]
+_fillKeys fs = do
+    st <- lift get
+    let fns = fieldNames st
+    return (filler fs fns)
+  where
+    filler fs (key : keys)
+        | _ismem key fs = filler fs keys
+        | otherwise = (key, Abs) : filler fs keys
+    filler fs [] = fs
 
 typeCheckLE :: LExp -> TypeCheck Type
 typeCheckLE e@(Ident name _) = do
@@ -231,7 +298,12 @@ typeCheckLE e@(Ident name _) = do
         Just ty -> return ty
         Nothing -> throwError $ "Undeclared identifier in VarRef expr:  " ++ show e
 typeCheckLE (ExprWrite exp _) = typeCheckExpr exp
-typeCheckLE _ = throwError "unimplemented"
+typeCheckLE (IndirectWrite re fn _) = do
+    rety <- typeCheckExpr re
+    samplerecty <- generateRecordType
+    unifyTypes samplerecty rety re re
+    let fty = getRecType fn rety
+    return $ fromJust fty
 
 typeCheckStmt :: AStmt -> TypeCheck ()
 typeCheckStmt (SimpleAssign le exp _) = do
@@ -261,4 +333,7 @@ typeCheckStmt (WhileStmt cond s _) = do
     unifyTypes condty INT cond cond
     typeCheckStmt s
 typeCheckStmt (NullStmt _) = return ()
-typeCheckStmt (FieldAssign lexp exp _) = throwError "unimplemented"
+typeCheckStmt (FieldAssign lexp exp _) = do
+    lexpty <- typeCheckLE lexp
+    expty <- typeCheckExpr exp
+    unifyTypes lexpty expty lexp exp

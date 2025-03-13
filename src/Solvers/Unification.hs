@@ -97,6 +97,11 @@ unify' ss t1 t2 =
     unify'' t1 t2@(Var _) = return $ union t2 t1 ss
     unify'' (Points t1) (Points t2) = unify' ss t1 t2
     -- unify'' case for Rec
+    unify'' r1@(Rec rs1) r2@(Rec rs2) = if matchKeys rs1 rs2 then foldlM (\acc (fn, typ) -> unify' acc typ (fromJust (findKey fn rs2))) ss rs1 else Left $ "Missing record entries r1: " ++ show r1 ++ " r2: " ++ show r2
+      where
+        findKey name ((k, typ) : acc) = if name == k then Just typ else findKey name acc
+        findKey _ [] = Nothing
+        matchKeys rs1 rs2 = Map.keys (Map.fromList rs1) == Map.keys (Map.fromList rs2)
     unify'' x@(Arrow args1 ret1) y@(Arrow args2 ret2)
         | length args1 /= length args2 = Left $ "unification failure, arity mismatch \n t1: " ++ show x ++ "\n t2: " ++ show y
         | otherwise = foldlM (\acc (t1, t2) -> unify' acc t1 t2) ss (zip (ret1 : args1) (ret2 : args2))

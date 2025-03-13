@@ -48,7 +48,7 @@ normalizeLExp e@(ExprWrite aexp _) = do
         (NId x) -> return (NIdent x)
         (NUnop ATimes (NId x)) -> return (NDerefWrite x)
         _ -> throwError $ "Normalization failed for Lexp: " ++ show e
-normalizeLExp e@(DirectWrite rn fn _) = return (NDirectWrite rn fn)
+-- normalizeLExp e@(DirectWrite rn fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite (Id rn _) fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite exp fn _) = do
     id <- normalizeExp exp
