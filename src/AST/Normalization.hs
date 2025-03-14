@@ -57,7 +57,9 @@ normalizeLExp e@(IndirectWrite exp fn _) = do
         _ -> throwError $ "Normalization failed for Lexp: " ++ show e
 
 normalizeRecField :: RecField -> Normalize NRecField
-normalizeRecField (RecField x e _) = undefined
+normalizeRecField (RecField x e _) = do
+    nexp <- normalizeExp e
+    return (RF x nexp)
 
 normalizeExp :: AExpr -> Normalize NExpr
 normalizeExp (Id s _) = return (NId s)

@@ -65,10 +65,6 @@ getGlobalEnv = do
     x <- lift get
     return (globalenv x)
 
-getUnifiedType :: Type -> TypeCheck (Maybe Type)
-getUnifiedType ty = do
-    Map.lookup ty <$> getSubsts
-
 fresh :: TypeCheck Int
 fresh = do
     st <- lift get
@@ -240,18 +236,24 @@ typeCheckExpr e@(FieldAccess exp fn _) = do
     -- fn shuld not be absent and exp has recordtype
     -- generate record type for exp
     expty <- typeCheckExpr exp
+    -- liftIO $ print ("Field exp: " ++ show exp ++ " type: " ++ show expty ++ " field: " ++ show e)
     recty <- generateRecordType
     unifyTypes expty recty exp e
     -- add the constraint that it is not absent
-    -- currently we check locally
-    unifiedType <- getUnifiedType recty
+    -- currently we check locally for a type that was already unified
+    unifiedType <- getUnifiedType expty
     -- probably should throw critical error when fromJust fails
     let fty = fromJust $ getRecType fn (fromJust unifiedType)
+    -- liftIO $ print ("Field: " ++ show e ++ " type: " ++ show fty)
     if fty == Abs
         then throwError $ "Absent field: " ++ show fty ++ " accessed in expr: " ++ show e
         else
             -- return the type of the record field
             return (fromJust $ getRecType fn recty)
+  where
+    getUnifiedType :: Type -> TypeCheck (Maybe Type)
+    getUnifiedType ty = do
+        Map.lookup ty <$> getSubsts
 
 getRecType :: String -> Type -> Maybe Type
 getRecType fn (Rec rs) = findKey fn rs

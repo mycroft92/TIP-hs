@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+
 module AST.AST where
 
 import Data.List (intercalate)
@@ -52,7 +54,8 @@ instance Show AExpr where
     show (VarRef name _) = "&" ++ name
     show (Null _) = "null"
     show (CallExpr nexp args _) = show nexp ++ "(" ++ intercalate "," (map show args) ++ ")"
-    show _ = "unimplemented"
+    show (Record rs _) = show rs ++ "{" ++ intercalate "," (map show rs) ++ "}"
+    show (FieldAccess exp fname _) = show exp ++ "." ++ show fname
 
 -- before normalization everything is Indirectwrite
 data LExp = Ident !String !Range | ExprWrite !AExpr !Range | IndirectWrite !AExpr !String !Range deriving (Eq)
@@ -60,7 +63,7 @@ data LExp = Ident !String !Range | ExprWrite !AExpr !Range | IndirectWrite !AExp
 instance Show LExp where
     show (Ident name _) = name
     show (ExprWrite exp _) = show exp
-    show _ = "unimplemented"
+    show (IndirectWrite exp s _) = show exp ++ "." ++ show s
 
 data AStmt
     = SimpleAssign !LExp !AExpr !Range
@@ -80,7 +83,7 @@ instance Show AStmt where
     show (IfStmt c e1 Nothing _) = "if (" ++ show c ++ ") {" ++ show e1 ++ "}"
     show (WhileStmt c s _) = "while (" ++ show c ++ ") {" ++ show s ++ "}"
     show (NullStmt _) = ""
-    show _ = "unimplemented"
+    show (FieldAssign lexp expr _) = show lexp ++ " = " ++ show expr
 
 data AFuncDec = Fun
     { fname :: String
