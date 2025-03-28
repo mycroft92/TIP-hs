@@ -148,10 +148,9 @@ typeCheckProgram funcs = do
 
 handleExp :: AExpr -> AExpr -> TypeCheck ()
 handleExp e1 e2 =
-    ( do
+    do
         liftIO (print ("Error unifying: " ++ show e1 ++ ", " ++ show e2))
         throwError ("Error unifying: " ++ show e1 ++ ", " ++ show e2)
-    )
 
 typeCheckFun :: AFuncDec -> TypeCheck ()
 typeCheckFun (Fun name args vars body ret _) = do
