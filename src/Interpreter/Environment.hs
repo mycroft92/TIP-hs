@@ -2,6 +2,7 @@
 
 module Interpreter.Environment where
 
+import AST.NAST
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Map as M (foldrWithKey)
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
@@ -10,6 +11,7 @@ import Interpreter.SemanticValues
 data Env = Env
     { e_values :: IORef (Map.Map String Value)
     , e_refs :: IORef [Value]
+    , e_funcs :: IORef (Map.Map Value (Env, NFunDec)) -- future proofing this if I want to do add nested functions
     , enclosing :: IORef (Maybe Env)
     }
 
@@ -32,5 +34,24 @@ newEnv :: IO Env
 newEnv = do
     ev <- newIORef Map.empty
     er <- newIORef []
+    ef <- newIORef Map.empty
     enc <- newIORef Nothing
-    return $ Env ev er enc
+    return $ Env ev er ef enc
+
+define :: String -> Value -> Env -> IO ()
+define name val env = do
+    -- print "Modifying environment"
+    -- printEnv env
+    modifyIORef' (e_values env) (Map.insert name val)
+
+createChildEnv :: Env -> IO Env
+createChildEnv env = do
+    -- print "Create Env called with parent:"
+    -- printEnv env
+    -- print "########"
+    ev <- newIORef Map.empty
+    er <- newIORef []
+    f' <- readIORef (e_funcs env)
+    ef <- newIORef f'
+    enc <- newIORef $ Just env
+    return $ Env ev er ef enc
