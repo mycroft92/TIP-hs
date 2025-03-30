@@ -3,7 +3,7 @@
 module Interpreter.Environment where
 
 import AST.NAST
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Map as M (foldrWithKey)
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
 import Interpreter.SemanticValues
@@ -38,11 +38,26 @@ newEnv = do
     enc <- newIORef Nothing
     return $ Env ev er ef enc
 
-define :: String -> Value -> Env -> IO ()
-define name val env = do
+defineName :: String -> Value -> Env -> IO Env
+defineName name val env = do
     -- print "Modifying environment"
     -- printEnv env
     modifyIORef' (e_values env) (Map.insert name val)
+    return env
+
+addRef :: Value -> Env -> IO Int
+addRef val env = do
+    -- print "Modifying environment"
+    -- printEnv en
+    list <- readIORef (e_refs env)
+    let list' = list ++ [val]
+    let index = length list' - 1
+    _ <- writeIORef (e_refs env) list'
+    return index
+
+addFunction :: Value -> NFunDec -> Env -> IO ()
+addFunction key fd env = do
+    modifyIORef' (e_funcs env) (Map.insert key (env, fd))
 
 createChildEnv :: Env -> IO Env
 createChildEnv env = do
@@ -55,3 +70,16 @@ createChildEnv env = do
     ef <- newIORef f'
     enc <- newIORef $ Just env
     return $ Env ev er ef enc
+
+getVar :: String -> Env -> IO (Maybe Value)
+getVar vnam env = do
+    m <- readIORef (e_values env)
+    enc <- readIORef (enclosing env)
+    -- print "Searching current"
+    -- s <- printEnv env
+    -- print s
+    case Map.lookup vnam m of
+        Nothing -> case enc of
+            Nothing -> return Nothing
+            Just ev -> getVar vnam ev
+        Just x -> return $ Just x
