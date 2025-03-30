@@ -33,13 +33,14 @@ instance Show NExpr where
     show (NRec fields) = "{" ++ unwords (map show fields) ++ "}"
     show (NFieldAccess r f) = r ++ "." ++ f
 
-data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String | NIndirectWrite !String !String deriving (Eq)
+data NLexp = NIdent !String | NDerefWrite !String | NDirectWrite !String !String deriving (Eq)
 
 instance Show NLexp where
     show (NIdent s) = s
     show (NDerefWrite s) = "*" ++ s
     show (NDirectWrite r f) = r ++ "." ++ f
-    show (NIndirectWrite r f) = r ++ "." ++ f
+
+-- show (NIndirectWrite r f) = r ++ "." ++ f
 
 data Func = Func !String ![String] deriving (Eq, Show)
 data NStmt

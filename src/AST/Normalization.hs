@@ -53,7 +53,7 @@ normalizeLExp e@(IndirectWrite (Id rn _) fn _) = return (NDirectWrite rn fn)
 normalizeLExp e@(IndirectWrite exp fn _) = do
     id <- normalizeExp exp
     case id of
-        (NId x) -> return (NIndirectWrite x fn)
+        (NId x) -> return (NDirectWrite x fn)
         _ -> throwError $ "Normalization failed for Lexp: " ++ show e
 
 normalizeRecField :: RecField -> Normalize NRecField
@@ -134,7 +134,6 @@ normalizeStmt (FieldAssign le e _) = do
     e' <- normalizeExp e
     case le' of
         (NDirectWrite _ _) -> addStmt (NEAssign le' e')
-        (NIndirectWrite _ _) -> addStmt (NEAssign le' e')
         _ -> throwError $ "Normalization failed, expected record type for lexp: " ++ show le ++ " got: " ++ show le'
 normalizeStmt (Output ae _) = do
     ae' <- normalizeExp ae
