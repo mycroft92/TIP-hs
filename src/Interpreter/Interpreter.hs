@@ -13,7 +13,7 @@ import Control.Monad.State (
  )
 import Data.Foldable (foldrM)
 import Data.IORef
-import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getVar)
+import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getRef, getVar)
 
 data InterpreterState = InterpreterState
     { env :: IORef Env
@@ -44,6 +44,13 @@ _getName var = do
     mval <- liftIO (getVar var ev)
     case mval of
         Nothing -> throwError $ Err ("No variable: '" ++ var ++ "' found in the environment!")
+        Just v -> return v
+_getRef :: Int -> Interpreter Value
+_getRef ref = do
+    ev <- _getEnv
+    val <- liftIO $ getRef ref ev
+    case val of
+        Nothing -> throwError $ Err ("No reference at index: '" ++ show ref ++ "' found in the environment!")
         Just v -> return v
 
 _addRef :: Value -> Interpreter Int
@@ -86,7 +93,62 @@ evaluateExp (NBinop e1 op e2) = do
         | otherwise = throwError $ Err ("Division by zero error!")
     divide e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for arithmetic operation")
 
-    notEq = undefined
-    equal = undefined
-    orMe = undefined
-    andMe = undefined
+    notEq :: Value -> Value -> Interpreter Value
+    notEq e1' e2' = do
+        v <- equal e1' e2'
+        case v of
+            INTVAL 0 -> return (INTVAL 1)
+            INTVAL _ -> return (INTVAL 0)
+            _ -> throwError $ Err "critical failure"
+
+    equal :: Value -> Value -> Interpreter Value
+    equal e1' e2'
+        | e1' == e2' = return (INTVAL 1)
+        | otherwise = return (INTVAL 0)
+    orMe :: Value -> Value -> Interpreter Value
+    orMe (INTVAL e1') (INTVAL e2')
+        | e1' > 0 = return (INTVAL 1)
+        | e2' > 0 = return (INTVAL 1)
+        | otherwise = return (INTVAL 0)
+    orMe e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for boolean operation")
+
+    andMe :: Value -> Value -> Interpreter Value
+    andMe (INTVAL e1') (INTVAL e2')
+        | e1' > 0 && e2' > 0 = return (INTVAL 1)
+        | otherwise = return (INTVAL 0)
+    andMe e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for boolean operation")
+evaluateExp (NUnop op exp) = do
+    e' <- evaluateExp exp
+    case op of
+        ATimes -> case e' of
+            REFVAL i -> _getRef i
+            _ -> throwError $ Err ("Not a valid reference: " ++ show e' ++ " obtained from exp: " ++ show exp)
+        AMinus -> case e' of
+            INTVAL i -> return (INTVAL (-i))
+            _ -> throwError $ Err ("Invalid expression: " ++ show exp ++ " to unary minus")
+        _ -> throwError $ Err ("Critical error, unexpected operator at unop exp: " ++ show (NUnop op exp))
+evaluateExp NNull = return NULL
+evaluateExp (NNum i) = return (INTVAL i)
+evaluateExp (NInput) = do
+    v <- liftIO getLine
+    let v' = read v :: Int
+    return (INTVAL v')
+evaluateExp (NAlloc e) = do
+    e' <- evaluateExp e
+    idx <- _addRef e'
+    return (REFVAL idx)
+evaluateExp (NRec fs) = do
+    fields <- mapM evaluateField fs
+    return (RECVAL fields)
+evaluateExp (NFieldAccess recname recfield) = do
+    val <- _getName recname
+    case val of
+        (RECVAL fvals) -> case findField recfield fvals of
+            Nothing -> throwError $ Err ("No such field: " ++ recfield ++ " in record name: " ++ recname ++ " val: " ++ show val)
+            Just v -> return v
+        e' -> throwError $ Err ("critical error, not a record value:" ++ show e' ++ " of var: " ++ show recname)
+
+evaluateField :: NRecField -> Interpreter (String, Value)
+evaluateField (RF fname fexp) = do
+    e' <- evaluateExp fexp
+    return (fname, e')

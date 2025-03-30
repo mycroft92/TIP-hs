@@ -10,6 +10,12 @@ data Value
     -- record references will be addedd later
     deriving (Show, Eq, Ord)
 
+findField :: String -> [(String, Value)] -> Maybe Value
+findField _ [] = Nothing
+findField name ((name', v) : fvals)
+    | name == name' = Just v
+    | otherwise = findField name fvals
+
 data InterpreterException
     = Err String
     | ReturnException Value

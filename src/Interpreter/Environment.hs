@@ -55,6 +55,11 @@ addRef val env = do
     _ <- writeIORef (e_refs env) list'
     return index
 
+getRef :: Int -> Env -> IO (Maybe Value)
+getRef ref env = do
+    er <- readIORef (e_refs env)
+    if length er <= ref then return Nothing else return (Just (er !! ref))
+
 addFunction :: Value -> NFunDec -> Env -> IO ()
 addFunction key fd env = do
     modifyIORef' (e_funcs env) (Map.insert key (env, fd))
