@@ -152,3 +152,32 @@ evaluateField :: NRecField -> Interpreter (String, Value)
 evaluateField (RF fname fexp) = do
     e' <- evaluateExp fexp
     return (fname, e')
+
+assignNLExp :: NLexp -> Value -> Interpreter ()
+assignNLExp = undefined
+
+evaluateStmt :: NStmt -> Interpreter ()
+evaluateStmt (NOutput exp) = do
+    e' <- evaluateExp exp
+    liftIO $ print e'
+evaluateStmt (NEAssign lhs exp) = do
+    e' <- evaluateExp exp
+    assignNLExp lhs e'
+evaluateStmt e@(NWhile cond stmts) = do
+    cval <- evaluateExp cond
+    case cval of
+        INTVAL 0 -> return ()
+        INTVAL _ -> mapM_ evaluateStmt stmts >> evaluateStmt (NWhile cond stmts)
+        v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in while statement: " ++ show e)
+evaluateStmt e@(NIfStmt cond stmt1 (Just stmt2)) = do
+    cval <- evaluateExp cond
+    case cval of
+        INTVAL 0 -> mapM_ evaluateStmt stmt2
+        INTVAL _ -> mapM_ evaluateStmt stmt1
+        v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in if statement: " ++ show e)
+evaluateStmt e@(NIfStmt cond stmt1 Nothing) = do
+    cval <- evaluateExp cond
+    case cval of
+        INTVAL 0 -> return ()
+        INTVAL _ -> mapM_ evaluateStmt stmt1
+        v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in if statement: " ++ show e)
