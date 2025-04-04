@@ -98,3 +98,8 @@ getVar vnam env = do
             Nothing -> return Nothing
             Just ev -> getVar vnam ev
         Just x -> getRef x env
+
+getVarRef :: String -> Env -> IO (Maybe Int)
+getVarRef name env = do
+    m <- readIORef (e_values env)
+    return $ Map.lookup name m

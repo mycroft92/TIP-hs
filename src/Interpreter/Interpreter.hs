@@ -2,8 +2,6 @@ module Interpreter.Interpreter where
 
 import AST.AST (Operator (..))
 import AST.NAST
-import Interpreter.SemanticValues
-
 import Control.Monad.Except (ExceptT (..), catchError, runExceptT, throwError)
 import Control.Monad.State (
     MonadIO (liftIO),
@@ -13,7 +11,10 @@ import Control.Monad.State (
  )
 import Data.Foldable (foldrM)
 import Data.IORef
-import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getRef, getVar)
+import Data.List (intercalate)
+import Data.Time.Clock.POSIX (getPOSIXTime)
+import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getRef, getVar, getVarRef)
+import Interpreter.SemanticValues
 
 data InterpreterState = InterpreterState
     { env :: IORef Env
@@ -45,6 +46,14 @@ _getName var = do
     case mval of
         Nothing -> throwError $ Err ("No variable: '" ++ var ++ "' found in the environment!")
         Just v -> return v
+_getVarRef :: String -> Interpreter Int
+_getVarRef name = do
+    env' <- _getEnv
+    idx <- liftIO $ getVarRef name env'
+    case idx of
+        Just idx' -> return idx'
+        Nothing -> throwError $ Err ("No variable: '" ++ name ++ "' found in the environment!")
+
 _getRef :: Int -> Interpreter Value
 _getRef ref = do
     ev <- _getEnv
@@ -183,6 +192,34 @@ evaluateStmt e@(NIfStmt cond stmt1 Nothing) = do
         v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in if statement: " ++ show e)
 evaluateStmt e@(NFCAssign lhs (Func name args)) = do
     argVals <- mapM _getName args
+    funval <- _getName name
+    case funval of
+        Fn n arity FFI -> do
+            val <- ffiCall funval argVals
+            assignNLExp lhs val
+        Fn _ arity _ -> do
+            val <- call funval argVals
+            assignNLExp lhs val
+        _ -> throwError $ Err ("Not a function! " ++ show (Func name args) ++ " : " ++ show funval)
+evaluateStmt e@(NRefAssign lhs rec) = do
+    idx <- _getVarRef rec
+    assignNLExp lhs (REFVAL idx)
 
-    throwError $ Err "unimplemented"
-evaluateStmt e@(NRefAssign lhs rec) = undefined
+call :: Value -> [Value] -> Interpreter Value
+call f@(Fn n arity _) args = undefined
+  where
+    check :: [Value] -> Int -> Interpreter ()
+    check args arity = if length args == arity then return () else throwError $ Err ("Wrong arity for: " ++ show f ++ ", given: " ++ intercalate "," (map show args))
+
+ffiCall :: Value -> [Value] -> Interpreter Value
+ffiCall f@(Fn n arity _) args = do
+    check args arity
+    case n of
+        "clock" -> do
+            mtime <- liftIO getPOSIXTime
+            return $ INTVAL $ fromIntegral $ (round . (* 1000)) mtime
+        _ -> throwError $ Err $ show f ++ " is not a defined ffi!"
+  where
+    check :: [Value] -> Int -> Interpreter ()
+    check args arity = if length args == arity then return () else throwError $ Err ("Wrong arity for: " ++ show f ++ ", given: " ++ intercalate "," (map show args))
+ffiCall f _ = throwError $ Err $ show f ++ " Invalid value for ffi!"
