@@ -57,6 +57,7 @@ library
     , cond
     , containers
     , mtl
+    , time
   default-language: Haskell2010
 
 executable TIP-exe
@@ -79,6 +80,7 @@ executable TIP-exe
     , cond
     , containers
     , mtl
+    , time
   default-language: Haskell2010
 
 test-suite TIP-test
@@ -102,4 +104,5 @@ test-suite TIP-test
     , cond
     , containers
     , mtl
+    , time
   default-language: Haskell2010
