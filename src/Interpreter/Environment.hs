@@ -4,14 +4,15 @@ module Interpreter.Environment where
 
 import AST.NAST
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
-import Data.Map as M (foldrWithKey)
+import Data.Map as M (foldrWithKey, keys)
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
 import Interpreter.SemanticValues
 
 data Env = Env
-    { e_values :: IORef (Map.Map String Value)
+    { e_values :: IORef (Map.Map String Int) -- name to its storage location map. This is needed to support var references
     , e_refs :: IORef [Value]
-    , e_funcs :: IORef (Map.Map Value (Env, NFunDec)) -- future proofing this if I want to do add nested functions
+    , -- we need to add to e_values, the keys from efuncs so that the environment is consistent
+      e_funcs :: IORef (Map.Map Value (Env, NFunDec)) -- future proofing this if I want to do add nested functions
     , enclosing :: IORef (Maybe Env)
     }
 
@@ -42,7 +43,8 @@ defineName :: String -> Value -> Env -> IO Env
 defineName name val env = do
     -- print "Modifying environment"
     -- printEnv env
-    modifyIORef' (e_values env) (Map.insert name val)
+    idx <- addRef val env
+    modifyIORef' (e_values env) (Map.insert name idx)
     return env
 
 addRef :: Value -> Env -> IO Int
@@ -69,12 +71,20 @@ createChildEnv env = do
     -- print "Create Env called with parent:"
     -- printEnv env
     -- print "########"
+    f' <- readIORef (e_funcs env)
     ev <- newIORef Map.empty
     er <- newIORef []
-    f' <- readIORef (e_funcs env)
     ef <- newIORef f'
     enc <- newIORef $ Just env
-    return $ Env ev er ef enc
+    let env' = Env ev er ef enc
+    _addFuncValues f' env'
+    return env'
+  where
+    -- we are making the child env consistent by adding the function keys from e_funcs
+    _addFuncValues :: Map.Map Value (Env, NFunDec) -> Env -> IO ()
+    _addFuncValues funcs ev = do
+        let keys = M.keys funcs
+        mapM_ (\f@(Fn name _ _) -> defineName name f ev) keys
 
 getVar :: String -> Env -> IO (Maybe Value)
 getVar vnam env = do
@@ -87,4 +97,4 @@ getVar vnam env = do
         Nothing -> case enc of
             Nothing -> return Nothing
             Just ev -> getVar vnam ev
-        Just x -> return $ Just x
+        Just x -> getRef x env

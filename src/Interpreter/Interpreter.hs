@@ -90,7 +90,7 @@ evaluateExp (NBinop e1 op e2) = do
     divide :: Value -> Value -> Interpreter Value
     divide (INTVAL e1) (INTVAL e2)
         | e2 /= 0 = return (INTVAL (div e1 e2))
-        | otherwise = throwError $ Err ("Division by zero error!")
+        | otherwise = throwError $ Err "Division by zero error!"
     divide e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for arithmetic operation")
 
     notEq :: Value -> Value -> Interpreter Value
@@ -129,7 +129,7 @@ evaluateExp (NUnop op exp) = do
         _ -> throwError $ Err ("Critical error, unexpected operator at unop exp: " ++ show (NUnop op exp))
 evaluateExp NNull = return NULL
 evaluateExp (NNum i) = return (INTVAL i)
-evaluateExp (NInput) = do
+evaluateExp NInput = do
     v <- liftIO getLine
     let v' = read v :: Int
     return (INTVAL v')
@@ -181,3 +181,8 @@ evaluateStmt e@(NIfStmt cond stmt1 Nothing) = do
         INTVAL 0 -> return ()
         INTVAL _ -> mapM_ evaluateStmt stmt1
         v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in if statement: " ++ show e)
+evaluateStmt e@(NFCAssign lhs (Func name args)) = do
+    argVals <- mapM _getName args
+
+    throwError $ Err "unimplemented"
+evaluateStmt e@(NRefAssign lhs rec) = undefined

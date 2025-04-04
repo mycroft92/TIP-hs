@@ -7,7 +7,6 @@ data Value
     | NULL
     | REFVAL Int -- Reference to location
     | RECVAL [(String, Value)]
-    -- record references will be addedd later
     deriving (Show, Eq, Ord)
 
 findField :: String -> [(String, Value)] -> Maybe Value
