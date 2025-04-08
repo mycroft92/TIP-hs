@@ -66,6 +66,11 @@ addFunction :: Value -> NFunDec -> Env -> IO ()
 addFunction key fd env = do
     modifyIORef' (e_funcs env) (Map.insert key (env, fd))
 
+getFunction :: Value -> Env -> IO (Maybe (Env, NFunDec))
+getFunction key env = do
+    f' <- readIORef (e_funcs env)
+    return $ Map.lookup key f'
+
 createChildEnv :: Env -> IO Env
 createChildEnv env = do
     -- print "Create Env called with parent:"

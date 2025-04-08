@@ -13,7 +13,7 @@ import Data.Foldable (foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getRef, getVar, getVarRef)
+import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getFunction, getRef, getVar, getVarRef)
 import Interpreter.SemanticValues
 
 data InterpreterState = InterpreterState
@@ -53,6 +53,13 @@ _getVarRef name = do
     case idx of
         Just idx' -> return idx'
         Nothing -> throwError $ Err ("No variable: '" ++ name ++ "' found in the environment!")
+_getFunc :: Value -> Interpreter (Env, NFunDec)
+_getFunc name = do
+    env' <- _getEnv
+    idx <- liftIO $ getFunction name env'
+    case idx of
+        Just idx' -> return idx'
+        Nothing -> throwError $ Err ("No function: '" ++ show name ++ "' found in the environment!")
 
 _getRef :: Int -> Interpreter Value
 _getRef ref = do
@@ -206,7 +213,9 @@ evaluateStmt e@(NRefAssign lhs rec) = do
     assignNLExp lhs (REFVAL idx)
 
 call :: Value -> [Value] -> Interpreter Value
-call f@(Fn n arity _) args = undefined
+call f@(Fn n arity _) args = do
+    check args arity
+    throwError $ Err ("unimplemented")
   where
     check :: [Value] -> Int -> Interpreter ()
     check args arity = if length args == arity then return () else throwError $ Err ("Wrong arity for: " ++ show f ++ ", given: " ++ intercalate "," (map show args))
