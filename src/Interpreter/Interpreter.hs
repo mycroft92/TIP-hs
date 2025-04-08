@@ -9,11 +9,11 @@ import Control.Monad.State (
     MonadTrans (lift),
     StateT (runStateT),
  )
-import Data.Foldable (foldrM)
+import Data.Foldable (foldlM, foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addFunction, addRef, defineName, getFunction, getRef, getVar, getVarRef)
+import Interpreter.Environment (Env (..), addFunction, addRef, createChildEnv, defineName, getFunction, getRef, getVar, getVarRef)
 import Interpreter.SemanticValues
 
 data InterpreterState = InterpreterState
@@ -212,13 +212,34 @@ evaluateStmt e@(NRefAssign lhs rec) = do
     idx <- _getVarRef rec
     assignNLExp lhs (REFVAL idx)
 
+-- might need a different way to handle function environments
 call :: Value -> [Value] -> Interpreter Value
 call f@(Fn n arity _) args = do
     check args arity
-    throwError $ Err ("unimplemented")
+    oldenv <- _getEnv
+    (fenv, NFunDec fn argns vars body ret) <- _getFunc f
+    -- put the function environment, add args and execute fstmt
+    fenv' <- liftIO $ createChildEnv fenv
+    _putEnv fenv'
+    defineArgs argns args
+    declareVars vars
+    mapM_ evaluateStmt body
+    val <- evaluateExp ret
+    _putEnv oldenv
+    return val
   where
     check :: [Value] -> Int -> Interpreter ()
     check args arity = if length args == arity then return () else throwError $ Err ("Wrong arity for: " ++ show f ++ ", given: " ++ intercalate "," (map show args))
+
+    defineArgs :: [String] -> [Value] -> Interpreter ()
+    defineArgs [] [] = return ()
+    defineArgs (n : ns) (a : argVals) = _define n a >> defineArgs ns argVals
+    defineArgs _ _ = throwError $ Err "impossible situation"
+
+    declareVars :: [String] -> Interpreter ()
+    declareVars [] = return ()
+    declareVars (v : vs) = _define v NULL >> declareVars vs
+call f _ = throwError $ Err $ show f ++ " not callable!"
 
 ffiCall :: Value -> [Value] -> Interpreter Value
 ffiCall f@(Fn n arity _) args = do
