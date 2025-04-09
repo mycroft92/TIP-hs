@@ -13,7 +13,7 @@ import Data.Foldable (foldlM, foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addRef, createChildEnv, defineName, getRef, getVar, getVarRef, writeRef)
+import Interpreter.Environment (Env (..), addRef, createChildEnv, declareName, defineName, getRef, getVar, getVarRef, writeRef)
 import Interpreter.SemanticValues
 
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
@@ -46,6 +46,10 @@ _putEnv ev = do
     st <- lift get
     liftIO $ writeIORef (env st) ev
 
+_declare :: String -> Interpreter ()
+_declare name = do
+    st <- _getEnv
+    liftIO $ declareName name st
 _define :: String -> Value -> Interpreter ()
 _define name val = do
     st <- _getEnv
@@ -247,6 +251,8 @@ call f@(Fn n arity _ _) args = do
     -- put the function environment, add args and execute fstmt
     fenv' <- liftIO $ createChildEnv fenv
     _putEnv fenv'
+    -- callee's job to declare inputs and define them
+    declareVars argns
     defineArgs argns args
     declareVars vars
     mapM_ evaluateStmt body
@@ -264,7 +270,7 @@ call f@(Fn n arity _ _) args = do
 
     declareVars :: [String] -> Interpreter ()
     declareVars [] = return ()
-    declareVars (v : vs) = _define v NULL >> declareVars vs
+    declareVars (v : vs) = _declare v >> declareVars vs
 call f _ = throwError $ Err $ show f ++ " not callable!"
 
 ffiCall :: Value -> [Value] -> Interpreter Value
