@@ -1,9 +1,11 @@
 module Interpreter.SemanticValues where
 
+import AST.NAST (MyRange)
+
 data FType = FFI | Native deriving (Eq, Ord, Show)
 data Value
     = INTVAL Int
-    | Fn String Int FType -- name, arity, type
+    | Fn String Int FType MyRange -- name, arity, type
     | NULL
     | REFVAL Int -- Reference to location
     | RECVAL [(String, Value)]

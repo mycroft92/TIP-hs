@@ -13,11 +13,14 @@ import Data.Foldable (foldlM, foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addFunction, addRef, createChildEnv, defineName, getFunction, getRef, getVar, getVarRef)
+import Interpreter.Environment (Env (..), addRef, createChildEnv, defineName, getRef, getVar, getVarRef, writeRef)
 import Interpreter.SemanticValues
+
+import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
 
 data InterpreterState = InterpreterState
     { env :: IORef Env
+    , funcs :: Map.Map Value (Env, NFunDec) -- Range keeps the keeps unique since they are inherited from defintion
     , globals :: Env -- why is this problematic with IOREFs?
     }
 
@@ -28,6 +31,16 @@ _getEnv = do
     st <- lift get
     liftIO $ readIORef (env st)
 
+_getFEnv :: Interpreter (Map.Map Value (Env, NFunDec))
+_getFEnv = do
+    st <- lift get
+    return (funcs st)
+
+_putFEnv :: Map.Map Value (Env, NFunDec) -> Interpreter ()
+_putFEnv ev = do
+    st <- lift get
+    lift $ put (st{funcs = ev})
+
 _putEnv :: Env -> Interpreter ()
 _putEnv ev = do
     st <- lift get
@@ -36,8 +49,16 @@ _putEnv ev = do
 _define :: String -> Value -> Interpreter ()
 _define name val = do
     st <- _getEnv
-    ev' <- liftIO $ defineName name val st
-    _putEnv ev'
+    res <- liftIO $ defineName name val st
+    case res of
+        Nothing -> throwError $ Err $ "No variable '" ++ name ++ "' in the environment!"
+        Just _ -> return ()
+
+_addFunction :: Value -> (Env, NFunDec) -> Interpreter ()
+_addFunction key val = do
+    funcs <- _getFEnv
+    let funcs' = Map.insert key val funcs
+    _putFEnv funcs'
 
 _getName :: String -> Interpreter Value
 _getName var = do
@@ -53,11 +74,11 @@ _getVarRef name = do
     case idx of
         Just idx' -> return idx'
         Nothing -> throwError $ Err ("No variable: '" ++ name ++ "' found in the environment!")
+
 _getFunc :: Value -> Interpreter (Env, NFunDec)
 _getFunc name = do
-    env' <- _getEnv
-    idx <- liftIO $ getFunction name env'
-    case idx of
+    env' <- _getFEnv
+    case Map.lookup name env' of
         Just idx' -> return idx'
         Nothing -> throwError $ Err ("No function: '" ++ show name ++ "' found in the environment!")
 
@@ -170,7 +191,12 @@ evaluateField (RF fname fexp) = do
     return (fname, e')
 
 assignNLExp :: NLexp -> Value -> Interpreter ()
-assignNLExp = undefined
+assignNLExp (NIdent name) v = _define name v
+assignNLExp (NDerefWrite name) v = do
+    ref <- _getVarRef name
+    ev <- _getEnv
+    liftIO $ writeRef ref v ev
+assignNLExp (NDirectWrite name field) v = undefined
 
 evaluateStmt :: NStmt -> Interpreter ()
 evaluateStmt (NOutput exp) = do
@@ -201,10 +227,10 @@ evaluateStmt e@(NFCAssign lhs (Func name args)) = do
     argVals <- mapM _getName args
     funval <- _getName name
     case funval of
-        Fn n arity FFI -> do
+        Fn n arity FFI _ -> do
             val <- ffiCall funval argVals
             assignNLExp lhs val
-        Fn _ arity _ -> do
+        Fn _ arity _ _ -> do
             val <- call funval argVals
             assignNLExp lhs val
         _ -> throwError $ Err ("Not a function! " ++ show (Func name args) ++ " : " ++ show funval)
@@ -214,10 +240,10 @@ evaluateStmt e@(NRefAssign lhs rec) = do
 
 -- might need a different way to handle function environments
 call :: Value -> [Value] -> Interpreter Value
-call f@(Fn n arity _) args = do
+call f@(Fn n arity _ _) args = do
     check args arity
     oldenv <- _getEnv
-    (fenv, NFunDec fn argns vars body ret) <- _getFunc f
+    (fenv, NFunDec fn argns vars body ret range) <- _getFunc f
     -- put the function environment, add args and execute fstmt
     fenv' <- liftIO $ createChildEnv fenv
     _putEnv fenv'
@@ -242,7 +268,7 @@ call f@(Fn n arity _) args = do
 call f _ = throwError $ Err $ show f ++ " not callable!"
 
 ffiCall :: Value -> [Value] -> Interpreter Value
-ffiCall f@(Fn n arity _) args = do
+ffiCall f@(Fn n arity _ _) args = do
     check args arity
     case n of
         "clock" -> do

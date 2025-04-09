@@ -1,10 +1,13 @@
 module AST.NAST where
 
 --- Normalized AST description
+
 ---
 import AST.AST (Operator)
 import Data.List (intercalate)
 
+data MyPos = MyPos {line :: Int, col :: Int} deriving (Show, Ord, Eq)
+data MyRange = MyRange {start :: MyPos, stop :: MyPos} deriving (Show, Ord, Eq)
 data NRecField = RF !String !NExpr deriving (Eq, Ord)
 
 instance Show NRecField where
@@ -78,11 +81,12 @@ data NFunDec = NFunDec
     , nfvars :: [String]
     , nfbody :: [NStmt]
     , nfret :: NExpr
+    , frange :: MyRange -- needed to keep the list of functions unique
     }
     deriving (Eq)
 
 instance Show NFunDec where
-    show (NFunDec name args vars body ret) =
+    show (NFunDec name args vars body ret _) =
         name
             ++ "("
             ++ intercalate ", " args
@@ -99,7 +103,7 @@ instance Show NFunDec where
 -- write a function to display NFunDec with proper nesting in nested If blocks.
 
 showNFunDec :: NFunDec -> String
-showNFunDec (NFunDec name args vars body ret) =
+showNFunDec (NFunDec name args vars body ret _) =
     name
         ++ "("
         ++ intercalate ", " args

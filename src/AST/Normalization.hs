@@ -10,6 +10,7 @@ import Control.Monad.State (
     StateT (runStateT),
  )
 import Data.Foldable (foldlM, foldrM)
+import Parser.Lexer (AlexPosn (..), Range (..))
 import Parser.TokenTypes (Token (String))
 
 -- Fresh var list needs to be created for every function
@@ -169,8 +170,12 @@ handleBlock block = do
     return block'
 
 normalizeFunction :: AFuncDec -> IO (Either String NFunDec)
-normalizeFunction (Fun fn fargs fvars fbody fret _) = do
+normalizeFunction (Fun fn fargs fvars fbody fret (Range a1 a2)) = do
     ret <- runStateT (runExceptT (normalizeStmt fbody >> normalizeExp fret)) initState
+    let start = posc a1
+    let stop = posc a2
     case ret of
         (Left err, _) -> return $ Left err
-        (Right exp, NormState _ ids stmts) -> return $ Right (NFunDec fn fargs (fvars ++ ids) (reverse stmts) exp)
+        (Right exp, NormState _ ids stmts) -> return $ Right (NFunDec fn fargs (fvars ++ ids) (reverse stmts) exp (MyRange start stop))
+  where
+    posc (AlexPn a l c) = MyPos l c

@@ -4,16 +4,17 @@ module Interpreter.Environment where
 
 import AST.NAST
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
-import Data.Map as M (foldrWithKey, keys)
+import Data.Map as M (foldrWithKey)
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
+import Data.Maybe (fromJust)
 import Interpreter.SemanticValues
 
 data Env = Env
     { e_values :: IORef (Map.Map String Int) -- name to its storage location map. This is needed to support var references
     , e_refs :: IORef [Value]
-    , -- we need to add to e_values, the keys from efuncs so that the environment is consistent
-      e_funcs :: IORef (Map.Map Value (Env, NFunDec)) -- future proofing this if I want to do add nested functions
-    , enclosing :: IORef (Maybe Env)
+    , -- , -- we need to add to e_values, the keys from efuncs so that the environment is consistent
+      -- e_funcs :: IORef (Map.Map Value (Env, NFunDec)) -- moved functions to main env instead
+      enclosing :: IORef (Maybe Env)
     }
 
 printEnv :: Env -> IO String
@@ -35,17 +36,31 @@ newEnv :: IO Env
 newEnv = do
     ev <- newIORef Map.empty
     er <- newIORef []
-    ef <- newIORef Map.empty
     enc <- newIORef Nothing
-    return $ Env ev er ef enc
+    return $ Env ev er enc
 
-defineName :: String -> Value -> Env -> IO Env
+declareName :: String -> Env -> IO ()
+declareName name env = do
+    idx <- addRef NULL env
+    modifyIORef' (e_values env) (Map.insert name idx)
+
+-- return env
+
+defineName :: String -> Value -> Env -> IO (Maybe ())
 defineName name val env = do
     -- print "Modifying environment"
     -- printEnv env
-    idx <- addRef val env
-    modifyIORef' (e_values env) (Map.insert name idx)
-    return env
+    idx <- getVarRef name env
+    case idx of
+        Nothing -> return Nothing
+        Just idx' -> Just <$> writeRef idx' val env
+
+declareNDefineName :: String -> Value -> Env -> IO ()
+declareNDefineName name val env = do
+    declareName name env
+    idx <- getVarRef name env
+    let idx' = fromJust idx
+    writeRef idx' val env
 
 addRef :: Value -> Env -> IO Int
 addRef val env = do
@@ -62,34 +77,23 @@ getRef ref env = do
     er <- readIORef (e_refs env)
     if length er <= ref then return Nothing else return (Just (er !! ref))
 
-addFunction :: Value -> NFunDec -> Env -> IO ()
-addFunction key fd env = do
-    modifyIORef' (e_funcs env) (Map.insert key (env, fd))
-
-getFunction :: Value -> Env -> IO (Maybe (Env, NFunDec))
-getFunction key env = do
-    f' <- readIORef (e_funcs env)
-    return $ Map.lookup key f'
+writeRef :: Int -> Value -> Env -> IO ()
+writeRef idx val env = do
+    er <- readIORef (e_refs env)
+    let ns = splitAt idx er
+    let er' = fst ns ++ (val : tail (snd ns))
+    writeIORef (e_refs env) er'
 
 createChildEnv :: Env -> IO Env
 createChildEnv env = do
     -- print "Create Env called with parent:"
     -- printEnv env
     -- print "########"
-    f' <- readIORef (e_funcs env)
     ev <- newIORef Map.empty
     er <- newIORef []
-    ef <- newIORef f'
     enc <- newIORef $ Just env
-    let env' = Env ev er ef enc
-    _addFuncValues f' env'
+    let env' = Env ev er enc
     return env'
-  where
-    -- we are making the child env consistent by adding the function keys from e_funcs
-    _addFuncValues :: Map.Map Value (Env, NFunDec) -> Env -> IO ()
-    _addFuncValues funcs ev = do
-        let keys = M.keys funcs
-        mapM_ (\f@(Fn name _ _) -> defineName name f ev) keys
 
 getVar :: String -> Env -> IO (Maybe Value)
 getVar vnam env = do
