@@ -17,6 +17,19 @@ findField name ((name', v) : fvals)
     | name == name' = Just v
     | otherwise = findField name fvals
 
+changeField :: String -> Value -> Value -> Maybe Value
+changeField fname val (RECVAL fields) =
+    case findIdx fname fields of
+        Just idx ->
+            let (fs, ss) = splitAt idx fields
+             in Just $ RECVAL (fs ++ (fname, val) : tail ss)
+        Nothing -> Nothing
+  where
+    findIdx fname [] = Nothing
+    findIdx fname ls@((f, _) : fs)
+        | fname == f = Just (length fields - length ls)
+        | otherwise = findIdx fname fs
+changeField _ _ _ = Nothing
 data InterpreterException
     = Err String
     | ReturnException Value

@@ -200,7 +200,15 @@ assignNLExp (NDerefWrite name) v = do
     ref <- _getVarRef name
     ev <- _getEnv
     liftIO $ writeRef ref v ev
-assignNLExp (NDirectWrite name field) v = undefined
+assignNLExp (NDirectWrite name field) v = do
+    recval <- _getName name
+    case recval of
+        RECVAL _ -> do
+            let newrec = changeField field v recval
+            case newrec of
+                Just newrec' -> _define name newrec'
+                Nothing -> throwError $ Err $ "No such field '" ++ field ++ "' in record '" ++ name ++ "' val: " ++ show recval
+        _ -> throwError $ Err $ "'" ++ name ++ "' is not a record type! value: " ++ show recval
 
 evaluateStmt :: NStmt -> Interpreter ()
 evaluateStmt (NOutput exp) = do
