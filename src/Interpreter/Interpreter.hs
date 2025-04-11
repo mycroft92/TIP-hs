@@ -103,6 +103,7 @@ evaluateExp (NId name) = _getName name
 evaluateExp (NBinop e1 op e2) = do
     e1' <- evaluateExp e1
     e2' <- evaluateExp e2
+    liftIO $ putStrLn (show e1 ++ ": " ++ show e1' ++ show op ++ " " ++ show e2 ++ ": " ++ show e2')
     case op of
         APlus -> handle e1' e2' (+)
         AMinus -> handle e1' e2' (-)
@@ -170,6 +171,7 @@ evaluateExp (NUnop op exp) = do
 evaluateExp NNull = return NULL
 evaluateExp (NNum i) = return (INTVAL i)
 evaluateExp NInput = do
+    liftIO $ print "Input: "
     v <- liftIO getLine
     let v' = read v :: Int
     return (INTVAL v')
@@ -217,7 +219,9 @@ evaluateStmt (NEAssign lhs exp) = do
     e' <- evaluateExp exp
     assignNLExp lhs e'
 evaluateStmt e@(NWhile cond stmts) = do
+    liftIO $ putStrLn "Debug: while "
     cval <- evaluateExp cond
+    liftIO $ putStrLn ("cond : " ++ show cond ++ " = " ++ show cval)
     case cval of
         INTVAL 0 -> return ()
         INTVAL _ -> mapM_ evaluateStmt stmts >> evaluateStmt (NWhile cond stmts)
