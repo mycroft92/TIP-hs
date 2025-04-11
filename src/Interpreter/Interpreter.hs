@@ -13,7 +13,7 @@ import Data.Foldable (foldlM, foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addRef, createChildEnv, declareName, defineName, getRef, getVar, getVarRef, writeRef)
+import Interpreter.Environment (Env (..), addRef, createChildEnv, declareName, defineName, getRef, getVar, getVarRef, newEnv, writeRef)
 import Interpreter.SemanticValues
 
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
@@ -21,7 +21,6 @@ import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
 data InterpreterState = InterpreterState
     { env :: IORef Env
     , funcs :: Map.Map Value (Env, NFunDec) -- Range keeps the keeps unique since they are inherited from defintion
-    , globals :: Env -- why is this problematic with IOREFs?
     }
 
 type Interpreter a = ExceptT InterpreterException (StateT InterpreterState IO) a
@@ -293,3 +292,37 @@ ffiCall f@(Fn n arity _ _) args = do
     check :: [Value] -> Int -> Interpreter ()
     check args arity = if length args == arity then return () else throwError $ Err ("Wrong arity for: " ++ show f ++ ", given: " ++ intercalate "," (map show args))
 ffiCall f _ = throwError $ Err $ show f ++ " Invalid value for ffi!"
+
+evaluateFunc :: NFunDec -> Interpreter ()
+evaluateFunc n@(NFunDec fn fargs vars body ret rn) = do
+    let funKey = Fn fn (length fargs) Native rn
+    _declare fn
+    _define fn funKey
+    funcenv <- _getEnv
+    _addFunction funKey (funcenv, n)
+
+evaluateProg :: [NFunDec] -> Interpreter ()
+evaluateProg fs = mapM_ evaluateFunc fs
+
+runMain :: Interpreter Value
+runMain = do
+    liftIO $ putStrLn "Executing main function"
+    _declare "$ret_main"
+    evaluateStmt (NFCAssign (NIdent "$ret_main") (Func "main" []))
+    evaluateExp (NId "$ret_main")
+
+initState :: IO InterpreterState
+initState = do
+    env <- newEnv
+    env' <- newIORef env
+    return $ InterpreterState env' Map.empty
+
+runInterpreter :: [NFunDec] -> IO (Either String Value)
+runInterpreter e = do
+    st <- initState
+    let x = runStateT (runExceptT (evaluateProg e >> runMain)) st
+     in do
+            res <- x
+            case res of
+                (Left (Err msg), _) -> return $ Left msg
+                (Right x, _) -> return $ Right x

@@ -2,9 +2,11 @@ module Lib where
 
 import AST.AST
 import AST.NAST
-import AST.Normalization (normalizeFunction)
+import AST.Normalization (normalizeFunctions)
 import Analysis.TypeChecker (TypeState (..), runTypeChecker)
 import qualified Data.ByteString.Lazy.Char8 as BS
+import Data.Foldable (foldlM)
+import Interpreter.Interpreter (runInterpreter)
 import qualified Parser.Lexer as L
 import Parser.Parser (parse)
 
@@ -25,6 +27,11 @@ runFile s = do
                     return 1
                 Right ts -> do
                     print "Parse finished, normalizing:"
-                    funcs <- mapM normalizeFunction exp
+                    funcs <- normalizeFunctions exp
                     -- print funcs
-                    return 0
+                    case funcs of
+                        Left err -> print err >> return 1
+                        Right funcs -> do
+                            print "running the interpreter"
+                            ret <- runInterpreter (reverse funcs)
+                            return 0

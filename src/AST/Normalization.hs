@@ -1,4 +1,4 @@
-module AST.Normalization (normalizeFunction) where
+module AST.Normalization (normalizeFunctions) where
 
 import AST.AST
 import AST.NAST
@@ -33,6 +33,18 @@ addStmt x = do
 
 addAssignStmt :: String -> NExpr -> Normalize ()
 addAssignStmt id e = addStmt (NEAssign (NIdent id) e)
+
+getStmt :: Normalize [NStmt]
+getStmt = do
+    st <- lift get
+    return (stmts st)
+getIds :: Normalize [String]
+getIds = do
+    st <- lift get
+    return (id_list st)
+
+resetState :: Normalize ()
+resetState = lift $ put initState
 
 newid :: Normalize String
 newid = do
@@ -169,13 +181,34 @@ handleBlock block = do
     lift $ put (NormState{freshvar = fv, id_list = idlist, stmts = stmts st})
     return block'
 
-normalizeFunction :: AFuncDec -> IO (Either String NFunDec)
+-- normalizeFunction :: AFuncDec -> IO (Either String NFunDec)
+normalizeFunction :: AFuncDec -> Normalize NFunDec
 normalizeFunction (Fun fn fargs fvars fbody fret (Range a1 a2)) = do
-    ret <- runStateT (runExceptT (normalizeStmt fbody >> normalizeExp fret)) initState
-    let start = posc a1
-    let stop = posc a2
-    case ret of
-        (Left err, _) -> return $ Left err
-        (Right exp, NormState _ ids stmts) -> return $ Right (NFunDec fn fargs (fvars ++ ids) (reverse stmts) exp (MyRange start stop))
+    body <- normalizeStmt fbody
+    ret <- normalizeExp fret
+    stmts <- getStmt
+    vars <- getIds
+    let rng = (MyRange start stop)
+    resetState
+    return (NFunDec fn fargs (fvars ++ vars) (reverse stmts) ret rng)
   where
     posc (AlexPn a l c) = MyPos l c
+    start = posc a1
+    stop = posc a2
+
+normalizeFunctions :: [AFuncDec] -> IO (Either String [NFunDec])
+normalizeFunctions fs = do
+    ret <- runStateT (runExceptT (mapM normalizeFunction fs)) initState
+    case ret of
+        (Left err, _) -> return $ Left err
+        (Right fs, _) -> return $ Right fs
+
+-- do
+--     ret <- runStateT (runExceptT (normalizeStmt fbody >> normalizeExp fret)) initState
+--     let start = posc a1
+--     let stop = posc a2
+--     case ret of
+--         (Left err, _) -> return $ Left err
+--         (Right exp, NormState _ ids stmts) -> return $ Right (NFunDec fn fargs (fvars ++ ids) (reverse stmts) exp (MyRange start stop))
+--   where
+--     posc (AlexPn a l c) = MyPos l c

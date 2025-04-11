@@ -32,5 +32,4 @@ changeField fname val (RECVAL fields) =
 changeField _ _ _ = Nothing
 data InterpreterException
     = Err String
-    | ReturnException Value
     deriving (Show, Eq)
