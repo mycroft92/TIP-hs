@@ -8,6 +8,7 @@ import Control.Monad.State (
     MonadState (get, put),
     MonadTrans (lift),
     StateT (runStateT),
+    liftIO,
  )
 import Data.Foldable (foldlM, foldrM)
 import Parser.Lexer (AlexPosn (..), Range (..))
@@ -79,9 +80,11 @@ normalizeExp (Id s _) = return (NId s)
 normalizeExp (Binop e1 op e2 _) = do
     e1' <- normalizeExp e1
     e2' <- normalizeExp e2
-    new <- newid
-    addAssignStmt new (NBinop e1' op e2')
-    return (NId new)
+    -- This was buggy because in loop conditions while (n-1) translates to t0 = n-1, while (t0) which is wrong semantically.
+    -- new <- newid
+    -- addAssignStmt new (NBinop e1' op e2')
+    -- return (NId new)
+    return (NBinop e1' op e2')
 normalizeExp (Unop op e _) = do
     e' <- normalizeExp e
     case op of
@@ -92,7 +95,7 @@ normalizeExp (Unop op e _) = do
             return (NUnop op (NId new))
         _ -> return (NUnop op e')
 normalizeExp (Number x _) = return (NNum x)
-normalizeExp (Input _) = return (NInput)
+normalizeExp (Input _) = return NInput
 normalizeExp (Record xs _) = do
     es <- mapM normalizeRecField xs
     return (NRec es)
@@ -118,7 +121,7 @@ normalizeExp (FieldAccess e fn _) = do
 normalizeExp (VarRef x _) = do
     new <- newid
     addStmt (NRefAssign (NIdent new) x)
-    return (NId x)
+    return (NId new)
 normalizeExp (Alloc e _) = do
     e' <- normalizeExp e
     return (NAlloc e')
@@ -134,8 +137,17 @@ normalizeExp (CallExpr fe args _) = do
     caseNormExp e = do
         e' <- normalizeExp e
         case e' of
-            (NId x) -> return x
-            _ -> throwError $ "cannot normalize expr (function call) : " ++ show e ++ " normalized to :" ++ show e'
+            (NId x) -> liftIO (print ("farg e: " ++ show e ++ " v: " ++ x)) >> return x
+            _ -> do
+                new <- newid
+                liftIO $ print ("farg: " ++ show e ++ " norm: " ++ show e' ++ " id:" ++ new)
+                addStmt (NEAssign (NIdent new) e')
+                return new
+
+-- case e' of
+-- (NId x) -> return x
+
+-- _ -> throwError $ "cannot normalize expr (function call) : " ++ show e ++ " normalized to :" ++ show e'
 
 normalizeStmt :: AStmt -> Normalize ()
 normalizeStmt (SimpleAssign le e _) = do

@@ -13,7 +13,7 @@ import Data.Foldable (foldlM, foldrM)
 import Data.IORef
 import Data.List (intercalate)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Interpreter.Environment (Env (..), addRef, createChildEnv, declareName, defineName, getRef, getVar, getVarRef, newEnv, writeRef)
+import Interpreter.Environment (Env (..), addRef, createChildEnv, declareName, defineName, getRefAtEnv, getVar, getVarRef, newEnv, writeRef)
 import Interpreter.SemanticValues
 
 import Data.Map.Strict as Map (Map, empty, insert, lookup, member)
@@ -70,7 +70,7 @@ _getName var = do
     case mval of
         Nothing -> throwError $ Err ("No variable: '" ++ var ++ "' found in the environment!")
         Just v -> return v
-_getVarRef :: String -> Interpreter Int
+_getVarRef :: String -> Interpreter (Int, Int)
 _getVarRef name = do
     env' <- _getEnv
     idx <- liftIO $ getVarRef name env'
@@ -85,15 +85,17 @@ _getFunc name = do
         Just idx' -> return idx'
         Nothing -> throwError $ Err ("No function: '" ++ show name ++ "' found in the environment!")
 
-_getRef :: Int -> Interpreter Value
-_getRef ref = do
+_getRef :: Int -> Int -> Interpreter Value
+_getRef ref enum = do
     ev <- _getEnv
-    val <- liftIO $ getRef ref ev
+    val <- liftIO $ getRefAtEnv ref enum ev
     case val of
         Nothing -> throwError $ Err ("No reference at index: '" ++ show ref ++ "' found in the environment!")
-        Just v -> return v
+        Just v -> do
+            liftIO $ print (" ref: " ++ show ref ++ " num:" ++ show enum ++ " val:" ++ show v)
+            return v
 
-_addRef :: Value -> Interpreter Int
+_addRef :: Value -> Interpreter (Int, Int)
 _addRef val = do
     ev <- _getEnv
     liftIO $ addRef val ev
@@ -103,7 +105,6 @@ evaluateExp (NId name) = _getName name
 evaluateExp (NBinop e1 op e2) = do
     e1' <- evaluateExp e1
     e2' <- evaluateExp e2
-    liftIO $ putStrLn (show e1 ++ ": " ++ show e1' ++ show op ++ " " ++ show e2 ++ ": " ++ show e2')
     case op of
         APlus -> handle e1' e2' (+)
         AMinus -> handle e1' e2' (-)
@@ -120,7 +121,7 @@ evaluateExp (NBinop e1 op e2) = do
   where
     handle :: Value -> Value -> (Int -> Int -> Int) -> Interpreter Value
     handle (INTVAL e1) (INTVAL e2) func = return (INTVAL (func e1 e2))
-    handle e1' e2' _ = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for arithmetic operation")
+    handle e1' e2' _ = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "': " ++ show e1' ++ ", '" ++ show e2 ++ "': " ++ show e2' ++ "for arithmetic operation")
 
     handleBool :: Value -> Value -> (Int -> Int -> Bool) -> Interpreter Value
     handleBool (INTVAL e1) (INTVAL e2) func
@@ -158,11 +159,14 @@ evaluateExp (NBinop e1 op e2) = do
         | e1' > 0 && e2' > 0 = return (INTVAL 1)
         | otherwise = return (INTVAL 0)
     andMe e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for boolean operation")
-evaluateExp (NUnop op exp) = do
+evaluateExp e@(NUnop op exp) = do
     e' <- evaluateExp exp
+    liftIO $ print (show e ++ ": " ++ show e')
     case op of
         ATimes -> case e' of
-            REFVAL i -> _getRef i
+            REFVAL i k -> do
+                v <- _getRef i k
+                return v
             _ -> throwError $ Err ("Not a valid reference: " ++ show e' ++ " obtained from exp: " ++ show exp)
         AMinus -> case e' of
             INTVAL i -> return (INTVAL (-i))
@@ -177,8 +181,8 @@ evaluateExp NInput = do
     return (INTVAL v')
 evaluateExp (NAlloc e) = do
     e' <- evaluateExp e
-    idx <- _addRef e'
-    return (REFVAL idx)
+    (idx, dep) <- _addRef e'
+    return (REFVAL idx dep)
 evaluateExp (NRec fs) = do
     fields <- mapM evaluateField fs
     return (RECVAL fields)
@@ -196,11 +200,12 @@ evaluateField (RF fname fexp) = do
     return (fname, e')
 
 assignNLExp :: NLexp -> Value -> Interpreter ()
-assignNLExp (NIdent name) v = _define name v
+assignNLExp (NIdent name) v = do
+    _define name v
 assignNLExp (NDerefWrite name) v = do
-    ref <- _getVarRef name
+    (ref, dep) <- _getVarRef name
     ev <- _getEnv
-    liftIO $ writeRef ref v ev
+    liftIO $ writeRef ref dep v ev
 assignNLExp (NDirectWrite name field) v = do
     recval <- _getName name
     case recval of
@@ -219,9 +224,7 @@ evaluateStmt (NEAssign lhs exp) = do
     e' <- evaluateExp exp
     assignNLExp lhs e'
 evaluateStmt e@(NWhile cond stmts) = do
-    liftIO $ putStrLn "Debug: while "
     cval <- evaluateExp cond
-    liftIO $ putStrLn ("cond : " ++ show cond ++ " = " ++ show cval)
     case cval of
         INTVAL 0 -> return ()
         INTVAL _ -> mapM_ evaluateStmt stmts >> evaluateStmt (NWhile cond stmts)
@@ -250,8 +253,8 @@ evaluateStmt e@(NFCAssign lhs (Func name args)) = do
             assignNLExp lhs val
         _ -> throwError $ Err ("Not a function! " ++ show (Func name args) ++ " : " ++ show funval)
 evaluateStmt e@(NRefAssign lhs rec) = do
-    idx <- _getVarRef rec
-    assignNLExp lhs (REFVAL idx)
+    (idx, dep) <- _getVarRef rec
+    assignNLExp lhs (REFVAL idx dep)
 
 -- might need a different way to handle function environments
 call :: Value -> [Value] -> Interpreter Value
@@ -260,7 +263,7 @@ call f@(Fn n arity _ _) args = do
     oldenv <- _getEnv
     (fenv, NFunDec fn argns vars body ret range) <- _getFunc f
     -- put the function environment, add args and execute fstmt
-    fenv' <- liftIO $ createChildEnv fenv
+    fenv' <- liftIO $ createChildEnv oldenv
     _putEnv fenv'
     -- callee's job to declare inputs and define them
     declareVars argns

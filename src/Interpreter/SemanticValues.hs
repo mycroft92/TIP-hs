@@ -7,7 +7,8 @@ data Value
     = INTVAL Int
     | Fn String Int FType MyRange -- name, arity, type
     | NULL
-    | REFVAL Int -- Reference to location
+    | REFVAR String
+    | REFVAL Int Int -- Reference to location stack size
     | RECVAL [(String, Value)]
     deriving (Show, Eq, Ord)
 

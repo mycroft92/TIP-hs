@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Analysis.NormDFS
+      Analysis.Resolution
       Analysis.TypeChecker
       AST.AST
       AST.ASTHelper
