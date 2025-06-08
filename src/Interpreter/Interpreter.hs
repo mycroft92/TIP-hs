@@ -70,6 +70,18 @@ _getName var = do
     case mval of
         Nothing -> throwError $ Err ("No variable: '" ++ var ++ "' found in the environment!")
         Just v -> return v
+_getNameUntilNoRef :: String -> Interpreter Value
+_getNameUntilNoRef name = do
+    v <- _getName name
+    case v of
+        REFVAL x y -> _getRefUntilNoRef x y
+        _ -> return v
+_getRefUntilNoRef :: Int -> Int -> Interpreter Value
+_getRefUntilNoRef ref enum = do
+    val <- _getRef ref enum
+    case val of
+        REFVAL x y -> _getRefUntilNoRef x y
+        _ -> return val
 _getVarRef :: String -> Interpreter (Int, Int)
 _getVarRef name = do
     env' <- _getEnv
@@ -92,7 +104,6 @@ _getRef ref enum = do
     case val of
         Nothing -> throwError $ Err ("No reference at index: '" ++ show ref ++ "' found in the environment!")
         Just v -> do
-            liftIO $ print (" ref: " ++ show ref ++ " num:" ++ show enum ++ " val:" ++ show v)
             return v
 
 _addRef :: Value -> Interpreter (Int, Int)
@@ -161,7 +172,6 @@ evaluateExp (NBinop e1 op e2) = do
     andMe e1' e2' = throwError $ Err ("Typecheck failure: Illegal operands '" ++ show e1 ++ "', '" ++ show e2 ++ "' for boolean operation")
 evaluateExp e@(NUnop op exp) = do
     e' <- evaluateExp exp
-    liftIO $ print (show e ++ ": " ++ show e')
     case op of
         ATimes -> case e' of
             REFVAL i k -> do
@@ -205,7 +215,12 @@ assignNLExp (NIdent name) v = do
 assignNLExp (NDerefWrite name) v = do
     (ref, dep) <- _getVarRef name
     ev <- _getEnv
-    liftIO $ writeRef ref dep v ev
+    ref' <- liftIO $ getRefAtEnv ref dep ev
+    --    liftIO $ putStrLn ("writing name:" ++ show name ++ " ref: " ++ show ref' ++ ", " ++ show dep)
+    case ref' of
+        Just (REFVAL x y) -> do
+            liftIO $ writeRef x y v ev
+        _ -> throwError $ Err ("Not a valid reference object (" ++ show name ++ ") to write: " ++ show ref')
 assignNLExp (NDirectWrite name field) v = do
     recval <- _getName name
     case recval of
@@ -220,7 +235,8 @@ evaluateStmt :: NStmt -> Interpreter ()
 evaluateStmt (NOutput exp) = do
     e' <- evaluateExp exp
     liftIO $ print e'
-evaluateStmt (NEAssign lhs exp) = do
+evaluateStmt e@(NEAssign lhs exp) = do
+    -- liftIO $ print ("Running : " ++ show e)
     e' <- evaluateExp exp
     assignNLExp lhs e'
 evaluateStmt e@(NWhile cond stmts) = do
@@ -230,12 +246,14 @@ evaluateStmt e@(NWhile cond stmts) = do
         INTVAL _ -> mapM_ evaluateStmt stmts >> evaluateStmt (NWhile cond stmts)
         v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in while statement: " ++ show e)
 evaluateStmt e@(NIfStmt cond stmt1 (Just stmt2)) = do
+    -- liftIO $ print ("Running :" ++ show e)
     cval <- evaluateExp cond
     case cval of
         INTVAL 0 -> mapM_ evaluateStmt stmt2
         INTVAL _ -> mapM_ evaluateStmt stmt1
         v -> throwError $ Err ("Invalid conditional value: " ++ show v ++ " in if statement: " ++ show e)
 evaluateStmt e@(NIfStmt cond stmt1 Nothing) = do
+    -- liftIO $ print ("Running :" ++ show e)
     cval <- evaluateExp cond
     case cval of
         INTVAL 0 -> return ()
@@ -249,6 +267,7 @@ evaluateStmt e@(NFCAssign lhs (Func name args)) = do
             val <- ffiCall funval argVals
             assignNLExp lhs val
         Fn _ arity _ _ -> do
+            -- liftIO $ print ("Calling fn: " ++ show e)
             val <- call funval argVals
             assignNLExp lhs val
         _ -> throwError $ Err ("Not a function! " ++ show (Func name args) ++ " : " ++ show funval)

@@ -77,6 +77,7 @@ addRef val env = do
 _getRef :: Int -> Env -> IO (Maybe Value)
 _getRef ref env = do
     er <- readIORef (e_refs env)
+    -- print ("ref: " ++ show ref ++ " er: " ++ show er)
     if length er <= ref then return Nothing else return (Just (er !! ref))
 
 writeRef :: Int -> Int -> Value -> Env -> IO ()
@@ -124,15 +125,16 @@ getVar vnam env = do
             case enc of
                 Nothing -> return Nothing
                 Just ev -> getVar vnam ev
-        Just x -> _getRef x env
+        Just x -> do
+            _getRef x env
 
 getRefAtEnv :: Int -> Int -> Env -> IO (Maybe Value)
 getRefAtEnv ref dep e@(Env ev er enc d)
-    | d == dep = print " env:" >> printEnv e >> _getRef ref e
+    | d == dep = _getRef ref e
     | otherwise = do
         enc' <- readIORef enc
-        print "env: "
-        printEnv e
+        -- print "env: "
+        -- printEnv e
         case enc' of
             Just ev' -> getRefAtEnv ref dep ev'
             Nothing -> return Nothing

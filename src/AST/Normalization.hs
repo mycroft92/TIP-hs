@@ -85,15 +85,18 @@ normalizeExp (Binop e1 op e2 _) = do
     -- addAssignStmt new (NBinop e1' op e2')
     -- return (NId new)
     return (NBinop e1' op e2')
-normalizeExp (Unop op e _) = do
-    e' <- normalizeExp e
-    case op of
-        -- Normalize the dereferencing so that we have lexps only in forms t, *t
-        ATimes -> do
+normalizeExp (Unop ATimes e _) = do
+    case e of
+        (Id e' _) -> return (NUnop ATimes (NId e'))
+        _ -> do
+            e' <- normalizeExp e
+            -- Normalize the dereferencing so that we have lexps only in forms t, *t
             new <- newid
             addAssignStmt new e'
-            return (NUnop op (NId new))
-        _ -> return (NUnop op e')
+            return (NUnop ATimes (NId new))
+normalizeExp (Unop op e _) = do
+    e' <- normalizeExp e
+    return (NUnop op e')
 normalizeExp (Number x _) = return (NNum x)
 normalizeExp (Input _) = return NInput
 normalizeExp (Record xs _) = do
@@ -137,10 +140,12 @@ normalizeExp (CallExpr fe args _) = do
     caseNormExp e = do
         e' <- normalizeExp e
         case e' of
-            (NId x) -> liftIO (print ("farg e: " ++ show e ++ " v: " ++ x)) >> return x
+            (NId x) ->
+                -- liftIO (print ("farg e: " ++ show e ++ " v: " ++ x))
+                return x
             _ -> do
                 new <- newid
-                liftIO $ print ("farg: " ++ show e ++ " norm: " ++ show e' ++ " id:" ++ new)
+                -- liftIO $ print ("farg: " ++ show e ++ " norm: " ++ show e' ++ " id:" ++ new)
                 addStmt (NEAssign (NIdent new) e')
                 return new
 
@@ -150,9 +155,11 @@ normalizeExp (CallExpr fe args _) = do
 -- _ -> throwError $ "cannot normalize expr (function call) : " ++ show e ++ " normalized to :" ++ show e'
 
 normalizeStmt :: AStmt -> Normalize ()
-normalizeStmt (SimpleAssign le e _) = do
+normalizeStmt s@(SimpleAssign le e _) = do
+    -- liftIO $ print ("Normalizing " ++ show s)
     le' <- normalizeLExp le
     e' <- normalizeExp e
+    -- liftIO $ print ("lexp: " ++ show le' ++ " exp: " ++ show e')
     addStmt (NEAssign le' e')
 normalizeStmt (FieldAssign le e _) = do
     le' <- normalizeLExp le
