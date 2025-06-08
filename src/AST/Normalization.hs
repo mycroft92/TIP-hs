@@ -10,9 +10,11 @@ import Control.Monad.State (
     StateT (runStateT),
     liftIO,
  )
-import Data.Foldable (foldlM, foldrM)
+
+-- import Data.Foldable (foldlM, foldrM)
 import Parser.Lexer (AlexPosn (..), Range (..))
-import Parser.TokenTypes (Token (String))
+
+-- import Parser.TokenTypes (Token (String))
 
 -- Fresh var list needs to be created for every function
 data NormState = NormState
