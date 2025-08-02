@@ -35,6 +35,7 @@ library
       Interpreter.Environment
       Interpreter.Interpreter
       Interpreter.SemanticValues
+      Lattices.Generic
       Lib
       Parser.Lexer
       Parser.Parser
